@@ -19,5 +19,19 @@
   "agenticTokenId": "1",
   "agenticEncryptedURI": "0x4402bb503bb62d0dff9a4cbaf842a1c9407f544c4e09ebfb917c2ec509ffdaea",
   "agenticMetadataHash": "0x14f98a566b5ac9ced6fcf1663a9dcee83eb1ec4a6ea92a3e9e60b444d5f128be",
-  "agenticMintTx": "0x2e963a6cf9003fd83abd5aaea50da18556c58da1b181fa3195688687b9937fe0"
+  "agenticMintTx": "0x2e963a6cf9003fd83abd5aaea50da18556c58da1b181fa3195688687b9937fe0",
+  "IntentExecutor": "0xDfa18235Be977759eA81432234386B8cA086Bd12",
+  "SettlementTarget": "0x0066F84EADB94064F3d91624348ba2c72d303116",
+  "IntentBounty": "0x25cB00682e345504d4EDC146CedF4CC31fc1816E",
+  "IntentosAgenticIdV2": "0x197C8750560a0b925401eF0F4fDDc0182f18A971",
+  "challengeDelaySeconds": "900",
+  "wave6At": "2026-08-31T20:38:56.503Z",
+  "executorTx": "0x4839955b94f71d08537b94f265c98b295f5b52584992266f1dea191f13bb97bb",
+  "settlementTargetTx": "0xc41550c878e67baa9d5d5a2b8454e3415faac4a6371aeb7b0976798f743b5766",
+  "bountyTx": "0x194902a8fee5d65b03b0094a6fd65b597c51e4065aef47cc84138f5db59f5fb8",
+  "agenticV2Tx": "0xbba8003665ab7e86d46950b53555a9cf419d96026b3adad2bc16021c93aff9d6",
+  "agenticV2TokenId": "1",
+  "agenticV2EncryptedURI": "0x478a1adda62f1c2331f7b105505ecd321c3e7232cbb20eadbedaa85f7c4b6ce2",
+  "agenticV2MetadataHash": "0x633cd8c53f08bba345069506c82564a0c28091a96379779ab5079e1422ac08fa",
+  "agenticV2MintTx": "0xb28886714234233ec22fda88817bead275db172a994cfb9498d88eb7955427e5"
 }

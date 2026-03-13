@@ -4,7 +4,7 @@ import { parseEther } from "viem";
 import { useWallet } from "@/wallet/WalletProvider";
 import { api, short } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
-import { INTENT_REGISTRY_ABI } from "@/lib/abi";
+import { INTENT_BOUNTY_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
 import { targetChain } from "@/lib/chains";
 import { VerdictStamp } from "@/components/VerdictStamp";
 import { GiveFeedback } from "@/components/GiveFeedback";
@@ -28,6 +28,8 @@ export function Market() {
   const [verify, setVerify] = useState<VerifyOut | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [bountyTx, setBountyTx] = useState<string | null>(null);
+  const [claimTx, setClaimTx] = useState<string | null>(null);
 
   const envelope: Envelope | null = compile?.envelope ?? null;
   const explorer = meta?.explorer ?? ready?.explorer;
@@ -62,6 +64,8 @@ export function Market() {
       setMode(null);
       setVerify(null);
       setRegisterTx(null);
+      setBountyTx(null);
+      setClaimTx(null);
     });
 
   const onRegister = () =>
@@ -135,6 +139,45 @@ export function Market() {
       setVerify(out);
     });
 
+  const onFund = () =>
+    run("Funding IntentBounty", async () => {
+      if (!verify || !meta?.bounty || !client || !address) {
+        throw new Error("Verify first and set INTENT_BOUNTY_ADDRESS.");
+      }
+      await ensureChain();
+      const hash = await client.writeContract({
+        account: address,
+        address: meta.bounty,
+        abi: INTENT_BOUNTY_ABI,
+        functionName: "fund",
+        args: [verify.vault.call.intentId, verify.vault.call.actionHash],
+        value: parseEther("0.0001"),
+        chain: targetChain,
+      });
+      const receipt = await waitForReceipt(publicClient, hash);
+      if (receipt.status !== "success") throw new Error("IntentBounty.fund reverted.");
+      setBountyTx(hash);
+    });
+
+  const onClaim = () =>
+    run("Claiming IntentBounty", async () => {
+      if (!verify || !meta?.bounty || !client || !address) {
+        throw new Error("Fund after APPROVE, then claim.");
+      }
+      await ensureChain();
+      const hash = await client.writeContract({
+        account: address,
+        address: meta.bounty,
+        abi: INTENT_BOUNTY_ABI,
+        functionName: "claim",
+        args: [verify.vault.call.intentId, verify.vault.call.actionHash, address],
+        chain: targetChain,
+      });
+      const receipt = await waitForReceipt(publicClient, hash);
+      if (receipt.status !== "success") throw new Error("IntentBounty.claim reverted. Need APPROVE.");
+      setClaimTx(hash);
+    });
+
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-10">
       <div className="mb-6">
@@ -142,6 +185,7 @@ export function Market() {
         <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Machines pay the same gate</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Agent A publishes a requirement. Agent B offers greedy (expect REJECT) then replans (expect APPROVE).
+          Router deposits pay Compute (Payment Layer). IntentBounty is A2A Pay after APPROVE.
         </p>
       </div>
       <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
@@ -178,6 +222,24 @@ export function Market() {
             )}
             <Button className="w-full" disabled={!action} loading={Boolean(busy?.includes("A2A"))} onClick={onVerify}>
               4. Verify A2A
+            </Button>
+            <Button
+              className="w-full"
+              variant="outline"
+              disabled={!verify || !meta?.bounty}
+              loading={busy === "Funding IntentBounty"}
+              onClick={onFund}
+            >
+              5. Fund bounty {bountyTx ? `· ${short(bountyTx)}` : ""}
+            </Button>
+            <Button
+              className="w-full"
+              variant="outline"
+              disabled={!bountyTx || verify?.result.verdict !== "APPROVE"}
+              loading={busy === "Claiming IntentBounty"}
+              onClick={onClaim}
+            >
+              6. Claim bounty {claimTx ? `· ${short(claimTx)}` : ""}
             </Button>
           </div>
         </div>

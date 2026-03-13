@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AddressSchema, Bytes32Schema, RiskClassSchema } from "./primitives.js";
+import { AddressSchema, Bytes32Schema, HexSchema, RiskClassSchema } from "./primitives.js";
 
 export const ActionParamsSchema = z.object({
   protocol: z.string().min(1),
@@ -25,6 +25,12 @@ export const EstimatedOutcomeSchema = z.object({
   description: z.string().min(1),
 });
 
+export const SettlementCallSchema = z.object({
+  target: AddressSchema,
+  calldata: HexSchema,
+  valueWei: z.string().regex(/^\d+$/),
+});
+
 export const ProposedActionSchema = z.object({
   agentId: Bytes32Schema,
   intentId: z.string().min(1),
@@ -33,9 +39,11 @@ export const ProposedActionSchema = z.object({
   plan: AgentPlanSchema,
   estimatedOutcome: EstimatedOutcomeSchema,
   stepId: z.string().min(1).optional(),
+  settlement: SettlementCallSchema.optional(),
 });
 
 export type ActionParams = z.infer<typeof ActionParamsSchema>;
 export type AgentPlan = z.infer<typeof AgentPlanSchema>;
 export type EstimatedOutcome = z.infer<typeof EstimatedOutcomeSchema>;
+export type SettlementCall = z.infer<typeof SettlementCallSchema>;
 export type ProposedAction = z.infer<typeof ProposedActionSchema>;

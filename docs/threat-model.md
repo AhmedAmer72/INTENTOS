@@ -36,7 +36,7 @@ An old valid intent or attestation is reused.
 
 The action shown to the verifier differs from the one settled.
 
-**Mitigation.** Settlement is keyed on `actionHash` (keccak of the full `ProposedAction`, which includes capital, duration, leverage, protocol). `DemoVault` additionally requires `settlementBinding == keccak256(abi.encode(intentId, actionHash, msg.value))` as attested by the oracle. Changing `msg.value` after approval reverts `BindingMismatch`.
+**Mitigation.** Settlement is keyed on `actionHash` (keccak of the full `ProposedAction`, which includes capital, duration, leverage, protocol). `DemoVault` additionally requires `settlementBinding == keccak256(abi.encode(intentId, actionHash, msg.value))` as attested by the oracle. Changing `msg.value` after approval reverts `BindingMismatch`. `IntentExecutor` uses a different binding: `keccak256(abi.encode(intentId, actionHash, target, keccak256(calldata), value))`. One verify = one binding (vault **or** executor). Executor also waits `challengeDelay` (900s) so the principal can `invalidateIntent`.
 
 ## Semantic manipulation
 
@@ -64,11 +64,17 @@ The request cannot be compiled without guessing.
 
 ## LLM authorizing funds
 
-**Mitigation.** Principle 1. `DemoVault` never reads model output. Only `IntentRegistry.isApproved`.
+**Mitigation.** Principle 1. `DemoVault` and `IntentExecutor` never read model output. Only `IntentRegistry.isApproved` plus the attested binding. Layer 2 without TEE evidence never reaches `recordVerification`.
 
 ## Agentic ID transfer / 7857 re-encryption
 
-**Residual.** `IntentosAgenticId` stores an AES-GCM ciphertext root on 0G Storage. Full TEE re-encryption on transfer is out of scope (0G’s own examples use placeholder proofs). We mint, store, and authorize the verifier.
+**Mitigation (v2).** `IntentosAgenticIdV2` requires an oracle EIP-712 proof for `transfer` and `clone`. v1 on Galileo is left as historical.
+
+**Residual.** Full TEE re-encryption of the AES key on transfer is still out of scope. Same URI/hash is allowed when no new key is issued. The oracle can still attest a dishonest transfer.
+
+## Intent envelope substitution
+
+**Mitigation.** Compile uploads `intentHashPayload(envelope)` to 0G Storage. `GET /envelope/:intentId` re-hashes the blob against `intentHash`. Evidence bundles include `envelopeRoot`.
 
 ## Self-feedback on ERC-8004
 

@@ -57,6 +57,7 @@ type Proof = {
   settleTxHash?: string | null;
   reputationTx?: string | null;
   meterTx?: string | null;
+  envelopeRoot?: string | null;
 };
 
 export function CertificatePage() {
@@ -139,6 +140,7 @@ export function CertificatePage() {
           <HashField label="Intent hash" value={cert?.intentHash} />
           <HashField label="Action hash" value={proof.verification.actionHash} />
           <HashField label="0G Storage merkle root" value={proof.evidenceRoot} />
+          {proof.envelopeRoot && <HashField label="Envelope root" value={proof.envelopeRoot} />}
           <HashField label="Evidence content hash" value={proof.localHash} />
           <HashField label="Client re-hash" value={clientHash || undefined} />
           <Field

@@ -45,6 +45,18 @@ services:
         sync: false
       - key: AGENTIC_ID_TOKEN
         sync: false
+      - key: INTENT_EXECUTOR_ADDRESS
+        sync: false
+      - key: SETTLEMENT_TARGET_ADDRESS
+        sync: false
+      - key: INTENT_BOUNTY_ADDRESS
+        sync: false
+      - key: AGENTIC_ID_V2_ADDRESS
+        sync: false
+      - key: AGENTIC_ID_V2_TOKEN
+        sync: false
+      - key: CHALLENGE_DELAY_SECONDS
+        value: "900"
       - key: AGENT_ID
         sync: false
       - key: REQUIREMENT_AGENT_ID

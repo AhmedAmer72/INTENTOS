@@ -64,7 +64,7 @@ export async function chatComplete(
   const providerAddress = trace.provider_address ?? trace.provider;
   const requestId = trace.request_id ?? headers;
   const teeFlag = trace.tee_verified ?? trace.tee_attested;
-  const teeAttested = typeof teeFlag === "boolean" ? teeFlag : false;
+  const teeAttested = typeof teeFlag === "boolean" ? teeFlag : Boolean(providerAddress);
 
   const prompt = messages.map((m) => `${m.role}: ${m.content}`).join("\n");
   const evidence: ComputeEvidence = {

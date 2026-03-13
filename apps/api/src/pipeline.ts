@@ -2,16 +2,19 @@ import {
   CertificateSchema,
   VERDICT_ONCHAIN,
   canonicalIntentId,
+  executorBinding,
   hashCanonical,
   intentHashPayload,
   settlementBinding,
   type IntentEnvelope,
   type ProposedAction,
+  type SettlementCall,
 } from "@intentos/schema";
 import { verifyAction } from "@intentos/verifier";
 import {
   FailClosedError,
   INTENT_REGISTRY_ABI,
+  SETTLEMENT_TARGET_ABI,
   VERIFICATION_METER_ABI,
   downloadJson,
   publicClient,
@@ -21,13 +24,31 @@ import {
   walletFromKey,
   type RouterConfig,
 } from "@intentos/zerog";
-import { keccak256, toBytes } from "viem";
+import { encodeFunctionData, keccak256, toBytes } from "viem";
 import { config } from "./config.js";
 import { prisma } from "./db.js";
 
 export function optionalTxHash(value?: string): `0x${string}` | undefined {
   if (typeof value !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(value)) return undefined;
   return value as `0x${string}`;
+}
+
+export function assertTeeAttested(evidence?: { teeAttested?: boolean; providerAddress?: string }) {
+  if (evidence?.teeAttested) return;
+  throw new FailClosedError(
+    "tee_required",
+    "Layer 2 compute evidence is not TEE-attested. Refusing to recordVerification.",
+    502,
+  );
+}
+
+export function defaultExecutorSettlement(amountWei: string): SettlementCall | undefined {
+  if (!config.settlementTarget) return undefined;
+  return {
+    target: config.settlementTarget,
+    calldata: encodeFunctionData({ abi: SETTLEMENT_TARGET_ABI, functionName: "ping", args: ["0x01"] }),
+    valueWei: amountWei || "0",
+  };
 }
 
 export async function recordAttestation(args: {
@@ -38,6 +59,7 @@ export async function recordAttestation(args: {
   alignmentBps: number;
   confidenceBps: number;
   amountWei: string;
+  settlement?: SettlementCall;
 }) {
   if (!config.oracleKey || !config.registry) {
     throw new FailClosedError("attest_unconfigured", "oracle key or registry not configured", 503);
@@ -45,7 +67,15 @@ export async function recordAttestation(args: {
   const intentHash = canonicalIntentId(args.intent);
   const intentId = intentHash;
   const amount = BigInt(args.amountWei || "0");
-  const binding = settlementBinding({ intentId, actionHash: args.actionHash, amount });
+  const binding = args.settlement
+    ? executorBinding({
+        intentId,
+        actionHash: args.actionHash,
+        target: args.settlement.target as `0x${string}`,
+        calldata: args.settlement.calldata as `0x${string}`,
+        value: BigInt(args.settlement.valueWei || "0"),
+      })
+    : settlementBinding({ intentId, actionHash: args.actionHash, amount });
   const { account, wallet, chain, chainId } = walletFromKey(config.oracleKey, config.network, config.rpc);
   const client = publicClient(config.network, config.rpc);
   const nonce = await client.readContract({
@@ -102,11 +132,11 @@ export async function recordAttestation(args: {
   if (receipt.status !== "success") {
     throw new FailClosedError(
       "attest_reverted",
-      `recordVerification reverted on-chain (${hash}). DemoVault will not see an APPROVE.`,
+      `recordVerification reverted on-chain (${hash}). Settlement will not see an APPROVE.`,
       502,
     );
   }
-  return { ok: true as const, txHash: hash, explorer: `${config.explorer}/tx/${hash}` };
+  return { ok: true as const, txHash: hash, explorer: `${config.explorer}/tx/${hash}`, settlementBinding: binding };
 }
 
 export async function upsertCertificate(
@@ -268,14 +298,35 @@ export async function runVerification(args: {
   registerTx?: string;
   payer?: string;
   mode: "human" | "a2a" | "step";
+  execute?: boolean;
 }) {
+  let action = args.action;
+  if (args.execute) {
+    const settlement = action.settlement ?? defaultExecutorSettlement(args.amountWei);
+    if (!settlement || !config.executor) {
+      throw new FailClosedError(
+        "executor_unconfigured",
+        "execute=true requires INTENT_EXECUTOR_ADDRESS and SETTLEMENT_TARGET_ADDRESS (or action.settlement).",
+        503,
+      );
+    }
+    action = { ...action, settlement };
+  }
+
   const verified = await verifyAction({
     intent: args.intent,
-    action: args.action,
+    action,
     router: args.router,
     sourceText: args.sourceText,
   });
   const { result, evidence } = verified;
+  assertTeeAttested(result.computeEvidence);
+
+  const intentRow = await prisma.intent.findUnique({ where: { id: args.intent.intentId } });
+  if (intentRow?.envelopeRoot) {
+    evidence.envelopeRoot = intentRow.envelopeRoot;
+  }
+
   const contentHash = hashCanonical(evidence);
   if (!config.deployerKey || config.deployerKey.length !== 66) {
     throw new FailClosedError("missing_deployer", "DEPLOYER_PRIVATE_KEY is required to pay 0G Storage upload fees.", 503);
@@ -294,6 +345,7 @@ export async function runVerification(args: {
       principal: args.intent.principal.wallet,
       envelopeJson: JSON.stringify(args.intent),
       sourceText: args.sourceText ?? "",
+      envelopeRoot: intentRow?.envelopeRoot ?? undefined,
       status: args.intent.status,
     },
     update: {},
@@ -315,7 +367,7 @@ export async function runVerification(args: {
       evidenceRoot,
       resultJson: JSON.stringify({ ...result, contentHash }),
       evidenceJson: JSON.stringify(evidence),
-      actionJson: JSON.stringify(args.action),
+      actionJson: JSON.stringify(action),
       registerTx,
       payer,
       meterTx: meter.ok ? meter.txHash : undefined,
@@ -323,7 +375,7 @@ export async function runVerification(args: {
     },
   });
 
-  const cert = await upsertCertificate(args.intent, args.action, result, evidenceRoot, {
+  const cert = await upsertCertificate(args.intent, action, result, evidenceRoot, {
     registerTxHash: registerTx,
   });
 
@@ -338,6 +390,7 @@ export async function runVerification(args: {
         alignmentBps: Math.round(result.alignmentScore * 10_000),
         confidenceBps: Math.round(result.confidence * 10_000),
         amountWei: args.amountWei,
+        settlement: args.execute ? action.settlement : undefined,
       });
       if (attest.txHash) {
         await prisma.verification.update({ where: { id: row.id }, data: { verifyTx: attest.txHash } });
@@ -375,10 +428,13 @@ export async function runVerification(args: {
   });
   const batch = await flushBatchLog(false);
 
+  const executeAfter = Math.floor(Date.now() / 1000) + (Number.isFinite(config.challengeDelay) ? config.challengeDelay : 900);
+
   return {
     result,
     evidenceRoot,
     contentHash,
+    envelopeRoot: evidence.envelopeRoot ?? intentRow?.envelopeRoot ?? null,
     storageUploaded: true,
     verificationId: row.id,
     certificate: cert,
@@ -394,6 +450,22 @@ export async function runVerification(args: {
         valueWei: args.amountWei,
       },
     },
+    executor:
+      args.execute && config.executor && action.settlement
+        ? {
+            address: config.executor,
+            approved: result.verdict === "APPROVE",
+            executeAfter,
+            challengeDelay: config.challengeDelay,
+            call: {
+              intentId,
+              actionHash: result.actionHash,
+              target: action.settlement.target,
+              data: action.settlement.calldata,
+              valueWei: action.settlement.valueWei,
+            },
+          }
+        : undefined,
   };
 }
 

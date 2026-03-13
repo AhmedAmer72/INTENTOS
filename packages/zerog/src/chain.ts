@@ -97,27 +97,33 @@ export const INTENT_REGISTRY_ABI = [
   },
   {
     type: "function",
+    name: "getVerification",
+    stateMutability: "view",
+    inputs: [
+      { name: "intentId", type: "bytes32" },
+      { name: "actionHash", type: "bytes32" },
+    ],
+    outputs: [
+      {
+        type: "tuple",
+        components: [
+          { name: "actionHash", type: "bytes32" },
+          { name: "evidenceRoot", type: "bytes32" },
+          { name: "verdict", type: "uint8" },
+          { name: "alignmentBps", type: "uint16" },
+          { name: "confidenceBps", type: "uint16" },
+          { name: "timestamp", type: "uint64" },
+          { name: "settlementBinding", type: "bytes32" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
     name: "principalNonce",
     stateMutability: "view",
     inputs: [{ name: "principal", type: "address" }],
     outputs: [{ type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "intentNonce",
-    stateMutability: "view",
-    inputs: [{ name: "intentId", type: "bytes32" }],
-    outputs: [{ type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "hasRole",
-    stateMutability: "view",
-    inputs: [
-      { name: "role", type: "bytes32" },
-      { name: "account", type: "address" },
-    ],
-    outputs: [{ type: "bool" }],
   },
   {
     type: "function",
@@ -137,6 +143,23 @@ export const INTENT_REGISTRY_ABI = [
         ],
       },
     ],
+  },
+  {
+    type: "function",
+    name: "intentNonce",
+    stateMutability: "view",
+    inputs: [{ name: "intentId", type: "bytes32" }],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "hasRole",
+    stateMutability: "view",
+    inputs: [
+      { name: "role", type: "bytes32" },
+      { name: "account", type: "address" },
+    ],
+    outputs: [{ type: "bool" }],
   },
   {
     type: "event",

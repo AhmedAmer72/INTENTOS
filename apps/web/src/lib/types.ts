@@ -70,6 +70,7 @@ export type CompileOut = {
   challengeReason?: string;
   usedModel?: string;
   intentHash: `0x${string}`;
+  envelopeRoot?: string | null;
   eip712: Eip712 | null;
 };
 
@@ -123,6 +124,7 @@ export type VerifyOut = {
   };
   evidenceRoot: `0x${string}`;
   contentHash?: `0x${string}`;
+  envelopeRoot?: string | null;
   storageUploaded: boolean;
   certificate: { serial: number; actionHash: string };
   attest?: { ok: boolean; txHash?: string; explorer?: string; error?: string; code?: string } | null;
@@ -130,6 +132,19 @@ export type VerifyOut = {
     address: `0x${string}` | null;
     approved: boolean;
     call: { intentId: `0x${string}`; actionHash: `0x${string}`; valueWei: string };
+  };
+  executor?: {
+    address: `0x${string}`;
+    approved: boolean;
+    executeAfter: number;
+    challengeDelay: number;
+    call: {
+      intentId: `0x${string}`;
+      actionHash: `0x${string}`;
+      target: `0x${string}`;
+      data: `0x${string}`;
+      valueWei: string;
+    };
   };
   meter?: { ok: boolean; skipped?: boolean; txHash?: string; amount?: string };
 };
@@ -143,6 +158,12 @@ export type Meta = {
   consumer: `0x${string}` | null;
   agenticId: `0x${string}` | null;
   agenticToken: string | null;
+  executor?: `0x${string}` | null;
+  settlementTarget?: `0x${string}` | null;
+  bounty?: `0x${string}` | null;
+  agenticIdV2?: `0x${string}` | null;
+  agenticTokenV2?: string | null;
+  challengeDelay?: number;
   explorer: string;
   routerUi?: string;
   agentId: string | null;

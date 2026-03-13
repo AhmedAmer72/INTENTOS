@@ -7,7 +7,7 @@ import { useWallet } from "@/wallet/WalletProvider";
 import { isRequestAlreadyPending, isUserRejected } from "@/wallet/eip1193";
 import { api, short } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
-import { DEMO_VAULT_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
+import { DEMO_VAULT_ABI, INTENT_EXECUTOR_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
 import { targetChain } from "@/lib/chains";
 import { ConstraintChips } from "@/components/ConstraintChips";
 import { GiveFeedback } from "@/components/GiveFeedback";
@@ -51,6 +51,29 @@ function vaultRevertMessage(err: unknown, verdict?: string): string {
   return text;
 }
 
+function executorRevertMessage(err: unknown, verdict?: string): string {
+  const text = err instanceof BaseError ? `${err.shortMessage} ${err.message}` : String(err);
+  if (/ChallengePending/i.test(text)) {
+    return "IntentExecutor reverted ChallengePending. Wait for the challenge delay (default 15 minutes).";
+  }
+  if (/BindingMismatch/i.test(text)) {
+    return "IntentExecutor reverted BindingMismatch. Target, calldata, and value must match the executor binding from verify.";
+  }
+  if (/IntentNotApproved/i.test(text)) {
+    if (verdict && verdict !== "APPROVE") {
+      return "IntentExecutor reverted IntentNotApproved. Expected until replan + APPROVE.";
+    }
+    return "IntentExecutor reverted IntentNotApproved.";
+  }
+  if (/AlreadyExecuted/i.test(text)) {
+    return "IntentExecutor reverted AlreadyExecuted.";
+  }
+  if (/CallFailed/i.test(text)) {
+    return "IntentExecutor reverted CallFailed — the SettlementTarget call did not succeed.";
+  }
+  return text;
+}
+
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
@@ -79,6 +102,7 @@ export function Studio() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [meter, setMeter] = useState<MeterInfo | null>(null);
+  const [bindExecutor, setBindExecutor] = useState(false);
 
   const envelope: Envelope | null = compile?.envelope ?? null;
   const stepIndex = STEPS.findIndex((s) => s.id === stage);
@@ -243,6 +267,7 @@ export function Studio() {
           amountWei,
           registerTx,
           payer: address,
+          execute: bindExecutor,
         }),
       });
       setVerify(out);
@@ -296,6 +321,63 @@ export function Studio() {
         }).catch(() => undefined);
       } catch (err) {
         const msg = vaultRevertMessage(err, verify.result.verdict);
+        setSettleErr(msg);
+        throw new Error(msg);
+      }
+    });
+
+  const onExecute = () =>
+    run("Calling IntentExecutor.execute", async () => {
+      if (!verify?.executor || !client || !address) {
+        throw new Error("Connect a wallet and verify with IntentExecutor binding first.");
+      }
+      await ensureChain();
+      try {
+        const hash = await client.writeContract({
+          account: address,
+          address: verify.executor.address,
+          abi: INTENT_EXECUTOR_ABI,
+          functionName: "execute",
+          args: [
+            verify.executor.call.intentId,
+            verify.executor.call.actionHash,
+            verify.executor.call.target,
+            verify.executor.call.data,
+          ],
+          value: BigInt(verify.executor.call.valueWei || "0"),
+          chain: targetChain,
+        });
+        const receipt = await waitForReceipt(publicClient, hash);
+        setSettleTx(hash);
+        if (receipt.status !== "success") {
+          let decoded = "IntentExecutor.execute reverted on-chain.";
+          try {
+            await publicClient.simulateContract({
+              account: address,
+              address: verify.executor.address,
+              abi: INTENT_EXECUTOR_ABI,
+              functionName: "execute",
+              args: [
+                verify.executor.call.intentId,
+                verify.executor.call.actionHash,
+                verify.executor.call.target,
+                verify.executor.call.data,
+              ],
+              value: BigInt(verify.executor.call.valueWei || "0"),
+            });
+          } catch (sim) {
+            decoded = executorRevertMessage(sim, verify.result.verdict);
+          }
+          setSettleErr(decoded);
+          throw new Error(decoded);
+        }
+        setSettleErr(null);
+        await api("/settle", {
+          method: "POST",
+          body: JSON.stringify({ actionHash: verify.result.actionHash, settleTx: hash }),
+        }).catch(() => undefined);
+      } catch (err) {
+        const msg = executorRevertMessage(err, verify.result.verdict);
         setSettleErr(msg);
         throw new Error(msg);
       }
@@ -383,6 +465,9 @@ export function Studio() {
                   meterBlocked={Boolean(
                     meter?.configured && BigInt(meter.credits) < BigInt(meter.priceWei || "0"),
                   )}
+                  bindExecutor={bindExecutor}
+                  setBindExecutor={setBindExecutor}
+                  executorReady={Boolean(meta?.executor && meta?.settlementTarget)}
                   onBack={() => setStage("agent")}
                   onVerify={onVerify}
                 />
@@ -402,6 +487,7 @@ export function Studio() {
                     onPropose("replan");
                   }}
                   onSettle={onSettle}
+                  onExecute={onExecute}
                 />
               )}
             </motion.div>
@@ -417,6 +503,7 @@ export function Studio() {
                 <p className="text-sm">{envelope.objective.description}</p>
                 <ConstraintChips hard={envelope.constraints.hard} soft={envelope.constraints.soft} />
                 <HashField label="Intent hash" value={compile?.intentHash} />
+                <HashField label="Envelope root" value={compile?.envelopeRoot ?? undefined} />
                 {registerTx && <HashField label="Register tx" value={registerTx} />}
               </div>
             ) : (
@@ -718,6 +805,9 @@ function VerifyStep({
   registered,
   live,
   meterBlocked,
+  bindExecutor,
+  setBindExecutor,
+  executorReady,
   onBack,
   onVerify,
 }: {
@@ -730,6 +820,9 @@ function VerifyStep({
   registered: boolean;
   live: boolean;
   meterBlocked: boolean;
+  bindExecutor: boolean;
+  setBindExecutor: (v: boolean) => void;
+  executorReady: boolean;
   onBack: () => void;
   onVerify: () => void;
 }) {
@@ -753,6 +846,22 @@ function VerifyStep({
         <FieldLabel>Settlement amount (0G)</FieldLabel>
         <Input value={amountOg} onChange={(e) => setAmountOg(e.target.value)} inputMode="decimal" />
       </Field>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={bindExecutor}
+          disabled={!executorReady}
+          onChange={(e) => setBindExecutor(e.target.checked)}
+        />
+        <span>
+          Bind IntentExecutor instead of DemoVault
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            One verify = one binding. Leave unchecked for the judge DemoVault revert. Requires a Wave 6 executor
+            deploy.
+          </span>
+        </span>
+      </label>
       {!registered && (
         <p className="text-xs text-challenge">
           Anchor the intent first. recordVerification cannot run until registerIntent lands.
@@ -799,6 +908,7 @@ function ProofStep({
   onBack,
   onReplan,
   onSettle,
+  onExecute,
 }: {
   verify: VerifyOut | null;
   settleTx: string | null;
@@ -810,6 +920,7 @@ function ProofStep({
   onBack: () => void;
   onReplan: () => void;
   onSettle: () => void;
+  onExecute: () => void;
 }) {
   if (!verify) return <p className="text-sm text-muted-foreground">Run verification to mint a certificate.</p>;
 
@@ -828,8 +939,12 @@ function ProofStep({
           <CheckCircle2Icon className="size-6 text-success" />
         </div>
         <div className="space-y-1">
-          <p className="font-semibold">Settled on DemoVault</p>
-          <p className="text-sm text-muted-foreground">The deposit matched an APPROVE attestation.</p>
+          <p className="font-semibold">{verify.executor ? "Settled on IntentExecutor" : "Settled on DemoVault"}</p>
+          <p className="text-sm text-muted-foreground">
+            {verify.executor
+              ? "The call matched an APPROVE executor binding after the challenge delay."
+              : "The deposit matched an APPROVE attestation."}
+          </p>
         </div>
         {explorer && settleTx && (
           <a className="text-sm text-primary underline" href={`${explorer}/tx/${settleTx}`} target="_blank" rel="noreferrer">
@@ -860,6 +975,7 @@ function ProofStep({
       <div className="grid gap-4">
         <HashField label="Content hash" value={verify.contentHash} />
         <HashField label="Attestation tx" value={verify.attest?.txHash} />
+        {verify.envelopeRoot && <HashField label="Envelope root" value={verify.envelopeRoot} />}
       </div>
       {verify.attest?.ok && verify.attest.explorer && (
         <a className="text-sm text-primary underline" href={verify.attest.explorer} target="_blank" rel="noreferrer">
@@ -894,15 +1010,30 @@ function ProofStep({
           <Button className="flex-1" onClick={onReplan}>
             Replan
           </Button>
+        ) : verify.executor ? (
+          <Button className="flex-1" loading={Boolean(busy)} onClick={onExecute}>
+            Execute
+          </Button>
         ) : (
           <Button className="flex-1" loading={Boolean(busy)} onClick={onSettle}>
             Deposit
           </Button>
         )}
       </div>
+      {verify.executor && (
+        <p className="text-xs text-muted-foreground">
+          Challenge delay {verify.executor.challengeDelay}s. Execute after unix {verify.executor.executeAfter}.
+          DemoVault.deposit on this attestation will revert BindingMismatch.
+        </p>
+      )}
       {verify.result.verdict !== "APPROVE" && (
         <Button className="w-full" variant="outline" loading={Boolean(busy)} onClick={onSettle}>
           Try deposit anyway
+        </Button>
+      )}
+      {verify.result.verdict === "APPROVE" && verify.executor && (
+        <Button className="w-full" variant="outline" loading={Boolean(busy)} onClick={onSettle}>
+          Try DemoVault deposit anyway
         </Button>
       )}
       <GiveFeedback
@@ -951,7 +1082,7 @@ function LayerBreakdown({ verify }: { verify: VerifyOut }) {
           <span>Layer 2 · TEE semantics</span>
           <span className="text-muted-foreground">
             {((verify.result.layerResults?.layer2?.alignmentScore ?? verify.result.alignmentScore) * 100).toFixed(0)}%
-            {verify.result.computeEvidence?.teeAttested ? " · TEE" : ""}
+            {verify.result.computeEvidence?.teeAttested ? " · TEE" : " · TEE missing"}
           </span>
         </li>
         <li className="flex items-center justify-between px-4 py-2.5">

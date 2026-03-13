@@ -1,6 +1,6 @@
 ﻿import Fastify, { type FastifyReply } from "fastify";
 import cors from "@fastify/cors";
-import { formatEther, isAddress, keccak256, toBytes } from "viem";
+import { encodeAbiParameters, formatEther, isAddress, keccak256, toBytes } from "viem";
 import {
   DEMO_INTENT_TEXT,
   IntentEnvelopeSchema,
@@ -16,6 +16,7 @@ import { compileIntent } from "@intentos/verifier";
 import { proposeAction, REFERENCE_AGENT, normalizeProposeMode } from "@intentos/agent-sdk";
 import {
   AGENTIC_ID_ABI,
+  AGENTIC_ID_V2_ABI,
   FailClosedError,
   INTENT_REGISTRY_ABI,
   VERIFICATION_METER_ABI,
@@ -25,6 +26,7 @@ import {
   pickChatRouterModel,
   publicClient,
   routerModelsFromList,
+  uploadJson,
   walletFromKey,
   type RouterConfig,
 } from "@intentos/zerog";
@@ -111,6 +113,7 @@ async function runVerifyRoute(
     amountWei?: string;
     registerTx?: string;
     payer?: string;
+    execute?: boolean;
   },
   mode: "human" | "a2a" | "step",
 ) {
@@ -141,6 +144,7 @@ async function runVerifyRoute(
       registerTx: body.registerTx,
       payer: body.payer,
       mode,
+      execute: Boolean(body.execute || actionParsed.data.settlement),
     });
   } catch (err) {
     return failClosed(reply, err);
@@ -199,6 +203,18 @@ export async function buildServer() {
           hint: pinned
             ? undefined
             : `Set ZEROG_ROUTER_MODEL=${chat ?? "a chat model from GET /v1/models"}`,
+        });
+        const pinnedModel = routerModelsFromList(listed).find((m) => m.id === config.routerModel);
+        checks.push({
+          id: "tee_model",
+          ok: pinnedModel?.tee_attested === true,
+          required: false,
+          detail:
+            pinnedModel?.tee_attested === true
+              ? `${config.routerModel} reports tee_attested`
+              : pinnedModel?.tee_attested === false
+                ? `${config.routerModel} is not tee_attested`
+                : `${config.routerModel} did not report tee_attested — verify still requires Layer 2 TEE evidence`,
         });
       } catch (err) {
         checks.push({
@@ -510,6 +526,32 @@ export async function buildServer() {
       detail: `ERC-8004 Reputation ${config.reputationRegistry}`,
     });
 
+    const wave6: Array<{ id: string; address: string; label: string }> = [
+      { id: "executor", address: config.executor, label: "IntentExecutor" },
+      { id: "settlement_target", address: config.settlementTarget, label: "SettlementTarget" },
+      { id: "bounty", address: config.bounty, label: "IntentBounty" },
+      { id: "agentic_id_v2", address: config.agenticIdV2, label: "IntentosAgenticIdV2" },
+    ];
+    for (const item of wave6) {
+      if (!item.address) {
+        checks.push({
+          id: item.id,
+          ok: false,
+          required: false,
+          detail: `${item.label} not set`,
+          hint: "pnpm contracts:deploy:wave6:galileo",
+        });
+        continue;
+      }
+      const live = await bytecodeLive(item.address).catch(() => false);
+      checks.push({
+        id: item.id,
+        ok: live,
+        required: true,
+        detail: live ? `${item.label} ${item.address}` : `No bytecode at ${item.address}`,
+      });
+    }
+
     return {
       ok: checks.filter((c) => c.required).every((c) => c.ok),
       network: config.network,
@@ -590,6 +632,28 @@ export async function buildServer() {
     compiled.envelope.integrity = { contentHash: intentHash };
     compiled.envelope.status = compiled.challenge ? "DRAFT" : "ACTIVE";
 
+    let envelopeRoot: string | null = null;
+    if (config.storageUpload) {
+      if (!config.deployerKey || config.deployerKey.length !== 66) {
+        return reply.code(503).send({
+          error: "DEPLOYER_PRIVATE_KEY is required to upload the compiled envelope to 0G Storage.",
+          code: "missing_deployer",
+        });
+      }
+      try {
+        const uploaded = await uploadJson(
+          { network: config.network, privateKey: config.deployerKey },
+          intentHashPayload(compiled.envelope),
+        );
+        envelopeRoot = uploaded.rootHash.startsWith("0x") ? uploaded.rootHash : `0x${uploaded.rootHash}`;
+      } catch (err) {
+        return reply.code(502).send({
+          error: `Envelope upload to 0G Storage failed: ${err instanceof Error ? err.message : String(err)}`,
+          code: "envelope_upload_failed",
+        });
+      }
+    }
+
     await prisma.intent.upsert({
       where: { id: compiled.envelope.intentId },
       create: {
@@ -598,11 +662,13 @@ export async function buildServer() {
         principal,
         envelopeJson: JSON.stringify(compiled.envelope),
         sourceText: body.text,
+        envelopeRoot,
         status: compiled.envelope.status,
       },
       update: {
         envelopeJson: JSON.stringify(compiled.envelope),
         intentHash,
+        envelopeRoot,
         status: compiled.envelope.status,
       },
     });
@@ -610,6 +676,7 @@ export async function buildServer() {
     return {
       ...compiled,
       intentHash,
+      envelopeRoot,
       eip712: config.registry
         ? {
             domain: {
@@ -640,6 +707,47 @@ export async function buildServer() {
           }
         : null,
     };
+  });
+
+  app.get("/envelope/:intentId", async (req, reply) => {
+    const { intentId } = req.params as { intentId: string };
+    let row: { envelopeRoot: string | null; intentHash: string } | null = null;
+    try {
+      row = await prisma.intent.findFirst({
+        where: { OR: [{ id: intentId }, { intentHash: intentId }] },
+        select: { envelopeRoot: true, intentHash: true },
+      });
+    } catch {
+      return reply.code(404).send({ error: "envelope not on storage", code: "envelope_missing" });
+    }
+    if (!row?.envelopeRoot) {
+      return reply.code(404).send({ error: "envelope not on storage", code: "envelope_missing" });
+    }
+    if (!config.deployerKey || config.deployerKey.length !== 66) {
+      return reply.code(503).send({
+        error: "DEPLOYER_PRIVATE_KEY is required to download from 0G Storage.",
+        code: "missing_deployer",
+      });
+    }
+    try {
+      const payload = await withTimeout(
+        downloadJson({ network: config.network, privateKey: config.deployerKey }, row.envelopeRoot),
+        12_000,
+        "envelope download",
+      );
+      const recomputed = hashCanonical(payload);
+      return {
+        envelopeRoot: row.envelopeRoot,
+        intentHash: row.intentHash,
+        payload,
+        matches: recomputed === row.intentHash,
+      };
+    } catch (err) {
+      return reply.code(502).send({
+        error: err instanceof Error ? err.message : String(err),
+        code: "envelope_download_failed",
+      });
+    }
   });
 
   app.post("/agent/propose", async (req, reply) => {
@@ -674,6 +782,7 @@ export async function buildServer() {
       amountWei?: string;
       registerTx?: string;
       payer?: string;
+      execute?: boolean;
     };
     return runVerifyRoute(req, reply, body, "human");
   });
@@ -688,6 +797,7 @@ export async function buildServer() {
       registerTx?: string;
       payer?: string;
       sourceText?: string;
+      execute?: boolean;
     };
     return runVerifyRoute(
       req,
@@ -699,6 +809,7 @@ export async function buildServer() {
         registerTx: body.registerTx,
         payer: body.payer,
         sourceText: body.sourceText,
+        execute: body.execute,
       },
       "a2a",
     );
@@ -866,6 +977,7 @@ export async function buildServer() {
       settleTxHash: row.settleTx ?? null,
       reputationTx: row.reputationTx ?? null,
       meterTx: row.meterTx ?? null,
+      envelopeRoot: row.intent.envelopeRoot ?? null,
       mode: row.mode,
     };
   });
@@ -880,6 +992,7 @@ export async function buildServer() {
       confidenceBps?: number;
       amount?: string;
       amountWei?: string;
+      settlement?: { target: `0x${string}`; calldata: `0x${string}`; valueWei: string };
     };
     if (!config.oracleKey || !config.registry) {
       return reply.code(503).send({
@@ -899,6 +1012,7 @@ export async function buildServer() {
         alignmentBps: body.alignmentBps ?? 0,
         confidenceBps: body.confidenceBps ?? 0,
         amountWei: body.amountWei ?? body.amount ?? "0",
+        settlement: body.settlement,
       });
       return out;
     } catch (err) {
@@ -1033,15 +1147,128 @@ export async function buildServer() {
     consumer: config.consumer || null,
     agenticId: config.agenticId || null,
     agenticToken: config.agenticToken || null,
+    executor: config.executor || null,
+    settlementTarget: config.settlementTarget || null,
+    bounty: config.bounty || null,
+    agenticIdV2: config.agenticIdV2 || null,
+    agenticTokenV2: config.agenticTokenV2 || null,
+    challengeDelay: config.challengeDelay,
     explorer: config.explorer,
     routerUi: config.routerUi,
     agentId: config.agentIdRaw ? toBytes32AgentId(config.agentIdRaw) : null,
     requirementAgentId: config.requirementAgentIdRaw ? toBytes32AgentId(config.requirementAgentIdRaw) : null,
-    reputationRegistry: config.reputationRegistry,
     identityRegistry: config.identityRegistry,
+    reputationRegistry: config.reputationRegistry,
     demoIntent: DEMO_INTENT_TEXT,
     verifyPriceWei: config.verifyPriceWei.toString(),
   }));
+
+  app.post("/agentic/v2/proof", async (req, reply) => {
+    const body = req.body as {
+      kind?: string;
+      tokenId?: string;
+      from?: string;
+      to?: string;
+      newMetadataHash?: `0x${string}`;
+      newEncryptedURI?: string;
+    };
+    if (!config.oracleKey || !config.agenticIdV2) {
+      return reply.code(503).send({
+        error: "Oracle key or AGENTIC_ID_V2_ADDRESS is not configured",
+        code: "agentic_v2_unconfigured",
+      });
+    }
+    if ((body.kind !== "transfer" && body.kind !== "clone") || !body.tokenId || !isAddress(body.from ?? "") || !isAddress(body.to ?? "")) {
+      return reply.code(400).send({
+        error: "kind (transfer|clone), tokenId, from, and to are required",
+        code: "agentic_v2_input",
+      });
+    }
+    const tokenId = BigInt(body.tokenId);
+    const client = publicClient(config.network, config.rpc);
+    let newEncryptedURI = body.newEncryptedURI;
+    let newMetadataHash = body.newMetadataHash;
+    if (!newEncryptedURI || !newMetadataHash) {
+      try {
+        const [uri, hash] = await Promise.all([
+          client.readContract({
+            address: config.agenticIdV2,
+            abi: AGENTIC_ID_V2_ABI,
+            functionName: "getEncryptedURI",
+            args: [tokenId],
+          }),
+          client.readContract({
+            address: config.agenticIdV2,
+            abi: AGENTIC_ID_V2_ABI,
+            functionName: "getMetadataHash",
+            args: [tokenId],
+          }),
+        ]);
+        newEncryptedURI = newEncryptedURI ?? uri;
+        newMetadataHash = newMetadataHash ?? hash;
+      } catch (err) {
+        return reply.code(502).send({
+          error: err instanceof Error ? err.message : String(err),
+          code: "agentic_v2_read_failed",
+        });
+      }
+    }
+    const { account } = walletFromKey(config.oracleKey, config.network, config.rpc);
+    if (!account.signTypedData) {
+      return reply.code(500).send({ error: "oracle cannot sign typed data", code: "agentic_v2_sign" });
+    }
+    if (!newEncryptedURI || !newMetadataHash) {
+      return reply.code(400).send({ error: "metadata hash and URI required", code: "agentic_v2_input" });
+    }
+    const attestationTypes = {
+      TransferAttestation: [
+        { name: "tokenId", type: "uint256" },
+        { name: "from", type: "address" },
+        { name: "to", type: "address" },
+        { name: "newMetadataHash", type: "bytes32" },
+        { name: "uriHash", type: "bytes32" },
+      ],
+      CloneAttestation: [
+        { name: "tokenId", type: "uint256" },
+        { name: "from", type: "address" },
+        { name: "to", type: "address" },
+        { name: "newMetadataHash", type: "bytes32" },
+        { name: "uriHash", type: "bytes32" },
+      ],
+    } as const;
+    const uriHash = keccak256(toBytes(newEncryptedURI));
+    const sig = await account.signTypedData({
+      domain: {
+        name: "INTENTOS AgenticId",
+        version: "1",
+        chainId: config.chainId,
+        verifyingContract: config.agenticIdV2,
+      },
+      types: attestationTypes,
+      primaryType: body.kind === "clone" ? "CloneAttestation" : "TransferAttestation",
+      message: {
+        tokenId,
+        from: body.from as `0x${string}`,
+        to: body.to as `0x${string}`,
+        newMetadataHash,
+        uriHash,
+      },
+    });
+    const proof = encodeAbiParameters(
+      [{ type: "bytes32" }, { type: "string" }, { type: "bytes" }],
+      [newMetadataHash as `0x${string}`, newEncryptedURI, sig],
+    );
+    return {
+      kind: body.kind,
+      tokenId: body.tokenId,
+      from: body.from,
+      to: body.to,
+      newMetadataHash,
+      newEncryptedURI,
+      proof,
+      contract: config.agenticIdV2,
+    };
+  });
 
   return app;
 }

@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { isAddress } from "viem";
 import { api, short } from "@/lib/api";
+import { waitForReceipt } from "@/lib/receipt";
+import { AGENTIC_ID_V2_ABI } from "@/lib/abi";
+import { targetChain } from "@/lib/chains";
 import { StatusRail } from "@/components/StatusRail";
-import type { Ready } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useWallet } from "@/wallet/WalletProvider";
+import type { Meta, Ready } from "@/lib/types";
 
 type Usage = {
   counts: { APPROVE: number; REJECT: number; CHALLENGE: number; total: number };
@@ -33,10 +40,12 @@ export function ConsolePage() {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [log, setLog] = useState<LogOut | null>(null);
   const [ready, setReady] = useState<Ready | null>(null);
+  const [meta, setMeta] = useState<Meta | null>(null);
 
   useEffect(() => {
     api<Usage>("/usage").then(setUsage).catch(() => setUsage(null));
     api<LogOut>("/log").then(setLog).catch(() => setLog(null));
+    api<Meta>("/meta").then(setMeta).catch(() => setMeta(null));
     const loadReady = () =>
       api<Ready>("/ready")
         .then(setReady)
@@ -56,6 +65,7 @@ export function ConsolePage() {
         </p>
       </div>
       <StatusRail ready={ready} />
+      <AgenticV2Transfer meta={meta} />
       <div className="grid gap-3 sm:grid-cols-4">
         {(["APPROVE", "REJECT", "CHALLENGE", "total"] as const).map((k) => (
           <div key={k} className="glass rounded-2xl p-4">
@@ -104,5 +114,88 @@ export function ConsolePage() {
         </table>
       </div>
     </main>
+  );
+}
+
+function AgenticV2Transfer({ meta }: { meta: Meta | null }) {
+  const { address, client, publicClient, ensureChain } = useWallet();
+  const [to, setTo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tx, setTx] = useState<string | null>(null);
+
+  if (!meta?.agenticIdV2 || !meta.agenticTokenV2) {
+    return (
+      <div className="glass rounded-2xl p-5">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Agentic ID v2</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Deploy Wave 6 and set AGENTIC_ID_V2_ADDRESS / AGENTIC_ID_V2_TOKEN to transfer with an oracle proof.
+        </p>
+      </div>
+    );
+  }
+
+  const onTransfer = async () => {
+    if (!address || !client) {
+      setError("Connect the token holder wallet.");
+      return;
+    }
+    if (!isAddress(to)) {
+      setError("Recipient must be a 0x address.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await ensureChain();
+      const proofOut = await api<{ proof: `0x${string}` }>("/agentic/v2/proof", {
+        method: "POST",
+        body: JSON.stringify({
+          kind: "transfer",
+          tokenId: meta.agenticTokenV2,
+          from: address,
+          to,
+        }),
+      });
+      const hash = await client.writeContract({
+        account: address,
+        address: meta.agenticIdV2!,
+        abi: AGENTIC_ID_V2_ABI,
+        functionName: "transfer",
+        args: [address, to as `0x${string}`, BigInt(meta.agenticTokenV2!), "0x", proofOut.proof],
+        chain: targetChain,
+      });
+      const receipt = await waitForReceipt(publicClient, hash);
+      if (receipt.status !== "success") throw new Error("Agentic ID v2 transfer reverted.");
+      setTx(hash);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="glass rounded-2xl p-5">
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Agentic ID v2</p>
+      <p className="mt-1 font-mono text-xs break-all">
+        {meta.agenticIdV2} · token #{meta.agenticTokenV2}
+      </p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Oracle-gated transfer. Same encrypted URI/hash is allowed when you omit a new key.
+      </p>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder="0x recipient" />
+        <Button loading={busy} onClick={onTransfer}>
+          Transfer
+        </Button>
+      </div>
+      {tx && meta.explorer && (
+        <a className="mt-2 inline-block text-xs text-primary underline" href={`${meta.explorer}/tx/${tx}`} target="_blank" rel="noreferrer">
+          {short(tx)}
+        </a>
+      )}
+      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+    </div>
   );
 }

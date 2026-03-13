@@ -92,4 +92,11 @@ describe("API fail-closed without live 0G", () => {
     });
     expect([400, 503]).toContain(res.statusCode);
   });
+
+  it("GET /envelope/:intentId is 404 when nothing was uploaded", async () => {
+    const app = await appP;
+    const res = await app.inject({ method: "GET", url: "/envelope/missing-intent" });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().code).toBe("envelope_missing");
+  });
 });

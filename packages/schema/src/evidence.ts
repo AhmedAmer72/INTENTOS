@@ -25,6 +25,7 @@ export const EvidenceBundleSchema = z.object({
       computeEvidence: ComputeEvidenceSchema.optional(),
     })
     .optional(),
+  envelopeRoot: z.string().min(1).optional(),
   createdAt: z.number().int(),
 });
 

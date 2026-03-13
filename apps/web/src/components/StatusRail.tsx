@@ -18,6 +18,11 @@ const ORDER = [
   "meter_settler",
   "consumer",
   "agentic_id",
+  "tee_model",
+  "executor",
+  "settlement_target",
+  "bounty",
+  "agentic_id_v2",
   "requirement_agent",
   "reputation",
 ];
@@ -38,6 +43,11 @@ const LABELS: Record<string, string> = {
   meter_settler: "Meter settler",
   consumer: "Consumer",
   agentic_id: "Agentic ID",
+  tee_model: "TEE model",
+  executor: "Executor",
+  settlement_target: "Settlement",
+  bounty: "Bounty",
+  agentic_id_v2: "Agentic ID v2",
   requirement_agent: "Req. agent",
   reputation: "Reputation",
 };

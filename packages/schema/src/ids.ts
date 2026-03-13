@@ -28,3 +28,24 @@ export function settlementBinding(args: {
     ),
   );
 }
+
+export function executorBinding(args: {
+  intentId: `0x${string}`;
+  actionHash: `0x${string}`;
+  target: `0x${string}`;
+  calldata: `0x${string}`;
+  value: bigint;
+}): `0x${string}` {
+  return keccak256(
+    encodeAbiParameters(
+      [
+        { type: "bytes32" },
+        { type: "bytes32" },
+        { type: "address" },
+        { type: "bytes32" },
+        { type: "uint256" },
+      ],
+      [args.intentId, args.actionHash, args.target, keccak256(args.calldata), args.value],
+    ),
+  );
+}

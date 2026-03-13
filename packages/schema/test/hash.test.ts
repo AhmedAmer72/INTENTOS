@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { canonicalJson, hashCanonical, hashUtf8 } from "../src/canonical.js";
-import { canonicalIntentId, demoEnvelope, intentHashPayload, intentIdBytes32 } from "../src/index.js";
+import {
+  canonicalIntentId,
+  demoEnvelope,
+  executorBinding,
+  intentHashPayload,
+  intentIdBytes32,
+  settlementBinding,
+} from "../src/index.js";
 
 describe("RFC 8785 canonical JSON + keccak256", () => {
   it("sorts object keys", () => {
@@ -38,6 +45,22 @@ describe("RFC 8785 canonical JSON + keccak256", () => {
     const a = hashCanonical(intentHashPayload(env));
     const b = hashCanonical(intentHashPayload(structuredClone(env)));
     expect(a).toBe(b);
+  });
+
+  it("hashes DemoVault and IntentExecutor settlement bindings differently", () => {
+    const intentId = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
+    const actionHash = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
+    const vault = settlementBinding({ intentId, actionHash, amount: 1n });
+    const exec = executorBinding({
+      intentId,
+      actionHash,
+      target: "0x1111111111111111111111111111111111111111",
+      calldata: "0x01",
+      value: 1n,
+    });
+    expect(vault).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(exec).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(vault).not.toBe(exec);
   });
 
   it("writes filled golden vectors for the Solidity HashProbe", () => {

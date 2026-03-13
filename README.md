@@ -44,7 +44,7 @@ There is no regex-only or offline demo path. Missing Router, Storage, contracts,
 
 ## Live Galileo deployment
 
-Do **not** redeploy `IntentRegistry` or `DemoVault`. Wave 4–5 added meter, consumer, and Agentic ID only.
+Do **not** redeploy `IntentRegistry` or `DemoVault`. Wave 4–5 added meter, consumer, and Agentic ID v1. Wave 6 adds executor, bounty, and Agentic ID v2 via `pnpm contracts:deploy:wave6:galileo` (script refuses to deploy registry/vault).
 
 | Contract | Address |
 | --- | --- |
@@ -53,6 +53,10 @@ Do **not** redeploy `IntentRegistry` or `DemoVault`. Wave 4–5 added meter, con
 | VerificationMeter | [`0x160046e7d8b6497d77F0eAdD6C20eb14A158753d`](https://chainscan-galileo.0g.ai/address/0x160046e7d8b6497d77F0eAdD6C20eb14A158753d) |
 | CertificateConsumer | [`0x13B90C0563Aa98015793aC4e0F3F4379950b1208`](https://chainscan-galileo.0g.ai/address/0x13B90C0563Aa98015793aC4e0F3F4379950b1208) |
 | IntentosAgenticId | [`0x4F4d5ad11616fE14dbBA1aA88A4EC800C162a4Fc`](https://chainscan-galileo.0g.ai/address/0x4F4d5ad11616fE14dbBA1aA88A4EC800C162a4Fc) token `#1` |
+| IntentExecutor | [`0xDfa18235Be977759eA81432234386B8cA086Bd12`](https://chainscan-galileo.0g.ai/address/0xDfa18235Be977759eA81432234386B8cA086Bd12) |
+| SettlementTarget | [`0x0066F84EADB94064F3d91624348ba2c72d303116`](https://chainscan-galileo.0g.ai/address/0x0066F84EADB94064F3d91624348ba2c72d303116) |
+| IntentBounty | [`0x25cB00682e345504d4EDC146CedF4CC31fc1816E`](https://chainscan-galileo.0g.ai/address/0x25cB00682e345504d4EDC146CedF4CC31fc1816E) |
+| IntentosAgenticIdV2 | [`0x197C8750560a0b925401eF0F4fDDc0182f18A971`](https://chainscan-galileo.0g.ai/address/0x197C8750560a0b925401eF0F4fDDc0182f18A971) token `#1` |
 | ERC-8004 Identity (0G) | [`0x8004A818BFB912233c491871b3d84c89A494BD9e`](https://chainscan-galileo.0g.ai/address/0x8004A818BFB912233c491871b3d84c89A494BD9e) · agent **361** (Agent B), **362** (requirement / Agent A) |
 | ERC-8004 Reputation (0G) | [`0x8004B663056A597Dffe9eCcC1965A193B7388713`](https://chainscan-galileo.0g.ai/address/0x8004B663056A597Dffe9eCcC1965A193B7388713) |
 
@@ -70,13 +74,13 @@ Natural language
   → EIP-712 sign + IntentRegistry.registerIntent (hash only)
   → Agent propose (greedy | replan) on 0G Compute
   → Layer 1  deterministic hard constraints (terminal REJECT on FAIL)
-  → Layer 2  TEE-backed semantics (may only downgrade APPROVE → CHALLENGE)
+  → Layer 2  TEE-backed semantics (fail-closed if not teeAttested; may only downgrade APPROVE → CHALLENGE)
   → Layer 3  intent ↔ plan ↔ action consistency
-  → Evidence upload to 0G Storage (merkle root)
+  → Envelope + evidence upload to 0G Storage (merkle roots)
   → VerificationMeter.debit (if configured)
   → Oracle recordVerification on IntentRegistry
-  → DemoVault.deposit  or  IntentNotApproved
-  → Certificate · optional Present · optional ERC-8004 feedback
+  → DemoVault.deposit  or  IntentExecutor.execute  or  IntentNotApproved
+  → Certificate · optional Present · optional ERC-8004 feedback · optional IntentBounty claim
 ```
 
 **Fail-closed rules**
@@ -85,6 +89,8 @@ Natural language
 - No verify without Router, Storage upload, and meter credits once the meter is configured.
 - Layer 1 hard `FAIL` cannot be overruled by the model.
 - `DemoVault` never reads model output. The gate is `isApproved` plus `settlementBinding = keccak256(intentId, actionHash, msg.value)`.
+- `IntentExecutor` uses a different binding (`intentId, actionHash, target, keccak(calldata), value`) and a 900s challenge delay. One verify = one binding.
+- Layer 2 without TEE evidence never calls `recordVerification` (`tee_required`).
 - `giveFeedback` must be sent by the **principal**, not the agent owner (self-feedback reverts).
 - `CertificateConsumer.accept` is one-shot; a second present reverts `AlreadyConsumed`.
 
@@ -94,11 +100,12 @@ Natural language
 
 | Layer | Use |
 | --- | --- |
-| **Chain** | IntentRegistry, DemoVault, VerificationMeter, CertificateConsumer, IntentosAgenticId. Solidity **0.8.24**, `evmVersion: cancun`, `viaIR`. |
+| **Chain** | IntentRegistry, DemoVault, VerificationMeter, CertificateConsumer, IntentosAgenticId, IntentExecutor, IntentBounty, IntentosAgenticIdV2. Solidity **0.8.24**, `evmVersion: cancun`, `viaIR`. |
 | **Compute** | Router (`qwen2.5-omni`, TEE-attested chat). Compile, propose, Layer 2. Not the deprecated serving-broker. |
-| **Storage** | Evidence blobs and encrypted 7857 metadata via `@0gfoundation/0g-storage-ts-sdk`. |
+| **Storage** | Compiled envelopes, evidence blobs, and encrypted 7857 metadata via `@0gfoundation/0g-storage-ts-sdk`. |
 | **ERC-8004** | Live Identity + Reputation. Agent ids 361 / 362 on Galileo. |
-| **ERC-7857-shaped** | `IntentosAgenticId` mint + encrypted URI (Storage root) + `authorizeUsage`. Official 0G minter is owner-only; TEE re-encryption on transfer is out of scope. |
+| **ERC-7857-shaped** | v1 historical mint. v2 oracle-gated `transfer` / `clone`. Metadata includes `agentId: 361`. |
+| **Payment** | Router deposit = Payment Layer (Compute). `VerificationMeter` = per-verify prepaid 0G. `IntentBounty` = A2A Pay after APPROVE. |
 | **DA** | Deferred. No published mainnet `DAEntrance`. Execution traces batch to 0G Storage (`GET /log`, flush every 3 events). |
 
 ---
@@ -129,7 +136,8 @@ Base URL local: `http://127.0.0.1:8787`. CORS is open (`origin: true`).
 | `GET` | `/health` | Liveness |
 | `GET` | `/ready` | Fail-closed probe (Router, Storage, contracts, keys, meter, 7857, …) |
 | `GET` | `/meta` | Network, addresses, model |
-| `POST` | `/compile` | Natural language → envelope |
+| `POST` | `/compile` | Natural language → envelope (uploads JCS payload when Storage is on) |
+| `GET` | `/envelope/:intentId` | Re-download envelope root and compare to `intentHash` |
 | `POST` | `/agent/propose` | Greedy or replan action |
 | `POST` | `/agent/offer` | Stamp an offer with Agent B id |
 | `POST` | `/verify` | Human-gated verify + attest |
@@ -144,6 +152,7 @@ Base URL local: `http://127.0.0.1:8787`. CORS is open (`origin: true`).
 | `GET` | `/log` | Storage batch heads |
 | `POST` | `/log/flush` | Force batch upload |
 | `POST` | `/reputation` | Persist `giveFeedback` tx |
+| `POST` | `/agentic/v2/proof` | Oracle EIP-712 proof for Agentic ID v2 transfer/clone |
 
 SDK: `@intentos/agent-sdk` — `verify`, `verifyA2A`, `verifyStep`, `meter.credits`, `usage`, `proof`.
 
@@ -198,8 +207,10 @@ Judge checklist: [docs/judge-guide.md](docs/judge-guide.md). A2A without UI: `pn
 | `pnpm test` / `pnpm lint` | Workspace tests and typecheck |
 | `pnpm provision` / `pnpm balances` | Wallet files and gas check |
 | `pnpm contracts:compile` / `pnpm contracts:test` | Hardhat |
-| `pnpm contracts:deploy:wave45:galileo` | Meter, consumer, Agentic ID only |
-| `pnpm --filter @intentos/contracts mint-agentic-id:galileo` | Encrypt metadata, upload, mint |
+| `pnpm contracts:deploy:wave45:galileo` | Meter, consumer, Agentic ID v1 only |
+| `pnpm contracts:deploy:wave6:galileo` | Executor, SettlementTarget, bounty, Agentic ID v2 (requires live registry) |
+| `pnpm --filter @intentos/contracts mint-agentic-id:galileo` | Encrypt metadata, upload, mint v1 |
+| `pnpm --filter @intentos/contracts mint-agentic-id-v2:galileo` | Mint v2 with ERC-8004 `agentId: 361` |
 | `pnpm build:web` / `pnpm start:api` | Production web build / API start (`tsx`) |
 
 `pnpm contracts:deploy:galileo` redeploys registry + vault. **Do not run it against the live Galileo addresses above.**
@@ -228,8 +239,8 @@ Not fully trustless. Stated so nobody is sold a fiction.
 | Evidence | 0G Storage merkle root; proof page re-hashes |
 | Semantic Layer 2 | TEE-attested inference; captured as evidence |
 | Verdict posting | Known `VERIFIER_ROLE` oracle |
-| Settlement | On-chain `isApproved` + value binding |
-| 7857 transfer | Residual — no TEE re-encryption on transfer |
+| Settlement | On-chain `isApproved` + vault or executor binding |
+| 7857 transfer | v2 oracle-gated; residual — no TEE re-encryption of the AES key |
 
 A compromised oracle can still sign a dishonest `APPROVE`. Detectability: replay Layer 1 locally against the evidence bundle. Path forward: move attestation inside attested Compute.
 
@@ -241,7 +252,7 @@ Threats and mitigations: [docs/threat-model.md](docs/threat-model.md).
 
 | Doc | Contents |
 | --- | --- |
-| [docs/architecture.md](docs/architecture.md) | Pipeline, packages, Wave 4–5 rules |
+| [docs/architecture.md](docs/architecture.md) | Pipeline, packages, Wave 4–6 rules |
 | [docs/protocol.md](docs/protocol.md) | Envelope and hashing |
 | [docs/integration.md](docs/integration.md) | API and SDK usage |
 | [docs/judge-guide.md](docs/judge-guide.md) | Unaided demo + curl |

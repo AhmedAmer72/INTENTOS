@@ -8,12 +8,14 @@ Unaided path from brief §39.
 4. Sign & `registerIntent`.
 5. **Greedy — maximize yield** (live 0G Compute, not canned JSON).
 6. Verify → REJECT, per-constraint failures, 0G Storage evidence root.
-7. Attempt `DemoVault.deposit` → transaction reverts `IntentNotApproved` on 0G.
+7. Attempt `DemoVault.deposit` → transaction reverts `IntentNotApproved` on 0G. That revert is the product. Leave the Studio executor checkbox **unchecked** for this beat.
 8. **Replan — obey constraints**. Verify → APPROVE. Oracle `recordVerification` posts automatically.
 9. Deposit succeeds. Open the certificate / proof page.
-10. Confirm intent hash, evidence content re-hash, and verification record against [chainscan](https://chainscan.0g.ai) (mainnet) or [Galileo](https://chainscan-galileo.0g.ai).
+10. Confirm intent hash, envelope root, evidence content re-hash, and verification record against [chainscan](https://chainscan.0g.ai) (mainnet) or [Galileo](https://chainscan-galileo.0g.ai).
 11. Deposit meter credits if the rail shows Meter. Verify writes a `Debited` tx on VerificationMeter.
 12. On the certificate page, **Present certificate** (second click reverts `AlreadyConsumed`). Give ERC-8004 feedback from a wallet that does **not** own agent 361.
+
+Optional Wave 6: check **Bind IntentExecutor** on a later verify. Proof shows Execute (900s challenge delay). DemoVault.deposit on that attestation reverts `BindingMismatch`. `/market` can fund/claim `IntentBounty` after A2A APPROVE. `/console` can transfer Agentic ID v2 with an oracle proof.
 
 ## Second beat — agent-to-agent (`/market`)
 

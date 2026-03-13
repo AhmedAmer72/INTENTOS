@@ -68,6 +68,7 @@ export async function verifyAction(args: {
       : {
           prompt: semantic.prompt,
           rawResponse: semantic.rawResponse,
+          computeEvidence: semantic.evidence,
         },
     createdAt: Math.floor(Date.now() / 1000),
   };

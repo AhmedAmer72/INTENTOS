@@ -24,6 +24,15 @@ pnpm --filter @intentos/contracts mint-agentic-id:galileo
 
 Do not run `pnpm contracts:deploy:galileo` again — that script redeploys the live registry and vault.
 
+Wave 6 (Galileo only) deploys `IntentExecutor`, `SettlementTarget`, `IntentBounty`, `IntentosAgenticIdV2` against the live registry:
+
+```bash
+pnpm contracts:deploy:wave6:galileo
+pnpm --filter @intentos/contracts mint-agentic-id-v2:galileo
+```
+
+Never pass a new registry address into that script. `INTENT_REGISTRY_ADDRESS` is required and the live vault is left untouched.
+
 ## Storage
 
 Package: `@0gfoundation/0g-storage-ts-sdk` (not `@0gfoundation/0g-ts-sdk` for new work — both exist; this repo uses the documented storage SDK).
@@ -44,9 +53,9 @@ Prefer the **Router** (OpenAI-compatible), not the deprecated `@0glabs/0g-servin
 | UI | https://pc.testnet.0g.ai | https://pc.0g.ai |
 | API | https://router-api-testnet.integratenetwork.work/v1 | https://router-api.0g.ai/v1 |
 
-Capture on every call: `x_0g_trace` (provider address, request id, tee flags), `ZG-Res-Key` when present, `X-Request-ID`. Persist as `ComputeEvidence`.
+Capture on every call: `x_0g_trace` (provider address, request id, tee flags), `ZG-Res-Key` when present, `X-Request-ID`. Persist as `ComputeEvidence`. Missing TEE evidence is fail-closed: `/verify` throws `tee_required` and does **not** call `recordVerification`.
 
-Pin `ZEROG_ROUTER_MODEL` to a `tee_attested` model from `GET /v1/models`.
+Pin `ZEROG_ROUTER_MODEL` to a `tee_attested` model from `GET /v1/models`. If the completion omits the boolean, a present `provider_address` is treated as TEE.
 
 ## Agentic ID / ERC-8004
 
@@ -62,11 +71,14 @@ pnpm --filter @intentos/contracts register-agent:galileo
 # copy the returned id to REQUIREMENT_AGENT_ID
 ```
 
-Encrypted Agentic ID metadata is minted on our `IntentosAgenticId` (not the official owner-only example). `giveFeedback` must be sent by the **principal wallet**, not the agent owner.
+Encrypted Agentic ID metadata is minted on our `IntentosAgenticId` v1 (historical) and `IntentosAgenticIdV2` (oracle-gated transfer/clone). `giveFeedback` must be sent by the **principal wallet**, not the agent owner.
 
 ```bash
 pnpm --filter @intentos/contracts mint-agentic-id:galileo
+pnpm --filter @intentos/contracts mint-agentic-id-v2:galileo
 ```
+
+v2 metadata **must** include ERC-8004 `agentId: 361`. Transfer: `POST /agentic/v2/proof` then the holder `writeContract transfer`. Same URI/hash is allowed when no new AES key is issued.
 
 ## DA
 
@@ -74,4 +86,4 @@ Not used. Requires a self-hosted encoder (GPU) and has no published mainnet `DAE
 
 ## Payment Layer
 
-There is no standalone "0G Pay" SDK. Billing for Compute uses the shared Payment Layer vault via Router deposits. Per-verification metering is `VerificationMeter.sol` (Wave 4).
+There is no standalone "0G Pay" SDK. Billing for Compute uses the shared Payment Layer vault via Router deposits. Per-verification metering is `VerificationMeter.sol` (Wave 4). Agent-to-agent native-0G escrow is `IntentBounty.sol` (Wave 6): fund after the requirement is registered/verified, claim only if that `(intent, action)` pair is `APPROVE`.

@@ -22,6 +22,7 @@ type WalletState = {
   address?: `0x${string}`;
   isConnected: boolean;
   connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
   ensureChain: () => Promise<void>;
   client: WalletClient | null;
   publicClient: PublicClient;
@@ -101,6 +102,20 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     await addOrSwitchChain();
   }, []);
 
+  const disconnect = useCallback(async () => {
+    setAddress(undefined);
+    const eth = getInjectedProvider();
+    if (!eth) return;
+    try {
+      await eth.request({
+        method: "wallet_revokePermissions",
+        params: [{ eth_accounts: {} }],
+      });
+    } catch {
+      // Older wallets have no revoke. Local disconnect is enough for the UI.
+    }
+  }, []);
+
   useEffect(() => {
     const eth = getInjectedProvider();
     if (!eth?.on) return;
@@ -132,11 +147,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       address,
       isConnected: Boolean(address),
       connect,
+      disconnect,
       ensureChain,
       client,
       publicClient,
     }),
-    [address, connect, ensureChain, client, publicClient],
+    [address, connect, disconnect, ensureChain, client, publicClient],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

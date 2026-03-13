@@ -17,7 +17,7 @@ const TABS = [
 ];
 
 export function AppShell() {
-  const { address, isConnected, connect } = useWallet();
+  const { address, isConnected, connect, disconnect } = useWallet();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,10 +79,23 @@ export function AppShell() {
                 {targetChain.name}
               </span>
               {isConnected ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/35 bg-primary/10 px-3 py-1 font-mono text-xs text-primary">
-                  <Wallet className="size-3" />
-                  {short(address, 3)}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/35 bg-primary/10 px-3 py-1 font-mono text-xs text-primary">
+                    <Wallet className="size-3" />
+                    {short(address, 3)}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-white/20 text-white/80 hover:bg-white/10 hover:text-white"
+                    onClick={() => {
+                      setError(null);
+                      disconnect().catch((err) => setError(err instanceof Error ? err.message : String(err)));
+                    }}
+                  >
+                    Disconnect
+                  </Button>
+                </div>
               ) : (
                 <Button
                   size="sm"

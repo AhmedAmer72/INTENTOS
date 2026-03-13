@@ -84,7 +84,7 @@ function FooterLink({
 export function Footer8({ className }: { className?: string }) {
   const reduce = useReducedMotion();
   return (
-    <footer className={cn("landing-band landing-band-deep border-t border-white/5 px-5 py-16", className)}>
+    <footer className={cn("border-t border-white/5 px-5 py-16", className)}>
       <div className="mx-auto flex max-w-5xl flex-col items-center text-center">
         <Reveal y={18}>
           <BrandMark size={40} />

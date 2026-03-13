@@ -153,6 +153,54 @@ body {
   background: rgba(192, 105, 255, 0.08);
 }
 
+.hero-glow {
+  background:
+    radial-gradient(70% 48% at 50% -10%, rgba(192, 105, 255, 0.28), transparent 58%),
+    radial-gradient(42% 36% at 78% 8%, rgba(85, 26, 148, 0.45), transparent 55%);
+}
+
+.hero-proof-card {
+  background: #160822;
+  border: 1px solid rgba(212, 168, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(244, 223, 255, 0.08);
+}
+
+.landing-section {
+  padding-block: clamp(4.5rem, 9vw, 8rem);
+}
+
+.landing-section-rule {
+  border-block: 1px solid rgba(244, 223, 255, 0.08);
+  background: #10061a;
+}
+
+.landing-wrap {
+  width: min(72rem, calc(100% - 2.5rem));
+  margin-inline: auto;
+}
+
+.landing-kicker {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #c069ff;
+}
+
+.landing-title {
+  margin-top: 0.85rem;
+  max-width: 18rem;
+  font-size: clamp(1.85rem, 4vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: #f4dfff;
+}
+
+.landing-title-wide {
+  max-width: 22rem;
+}
+
 .tilted-tiles-col {
   will-change: transform;
 }
@@ -195,64 +243,6 @@ body {
   display: flex;
   width: max-content;
   animation: landing-marquee 32s linear infinite;
-}
-
-.landing-band {
-  position: relative;
-  isolation: isolate;
-}
-
-.landing-band-plum {
-  background:
-    radial-gradient(880px 280px at 8% 0%, rgba(85, 26, 148, 0.7), transparent 58%),
-    #160822;
-}
-
-.landing-band-orchid {
-  background:
-    radial-gradient(820px 300px at 92% 8%, rgba(192, 105, 255, 0.28), transparent 56%),
-    #2a1248;
-}
-
-.landing-band-royal {
-  background:
-    radial-gradient(760px 260px at 18% 100%, rgba(192, 105, 255, 0.22), transparent 54%),
-    #3d1a5c;
-}
-
-.landing-band-ink {
-  background:
-    radial-gradient(640px 240px at 86% 16%, rgba(251, 113, 133, 0.16), transparent 52%),
-    #0c0414;
-}
-
-.landing-band-deep {
-  background: #12061c;
-}
-
-.glass.landing-card-orchid {
-  background: #351a5c;
-  border-color: rgba(192, 105, 255, 0.55);
-}
-
-.glass.landing-card-plum {
-  background: #1c0f2e;
-  border-color: rgba(212, 168, 255, 0.45);
-}
-
-.glass.landing-card-royal {
-  background: #4a2280;
-  border-color: rgba(212, 168, 255, 0.5);
-}
-
-.glass.landing-card-rose {
-  background: #3a1528;
-  border-color: rgba(251, 113, 133, 0.45);
-}
-
-.glass.landing-card-gold {
-  background: #3a2818;
-  border-color: rgba(245, 193, 106, 0.42);
 }
 
 .landing-card {

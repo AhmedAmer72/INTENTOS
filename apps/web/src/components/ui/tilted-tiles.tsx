@@ -88,7 +88,9 @@ export function TiltedTiles({
     if (!wrap) return;
 
     const io = new IntersectionObserver(
-      ([entry]) => {
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
         setInView(entry.isIntersecting && entry.intersectionRatio > 0.04);
       },
       { threshold: [0, 0.04, 0.2] },

@@ -10,12 +10,13 @@ import { ExternalLink, Globe, LayoutGrid, Wallet } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { Reveal, revealEase, revealViewport, Stagger, StaggerItem } from "@/components/Reveal";
 
+import { targetExplorer } from "@/lib/chains";
 import { cn } from "@/lib/utils";
 
 const SOCIAL = [
   { label: "Studio", href: "/studio", icon: Wallet, external: false },
   { label: "Market", href: "/market", icon: LayoutGrid, external: false },
-  { label: "0G explorer", href: "https://chainscan-galileo.0g.ai", icon: ExternalLink, external: true },
+  { label: "0G explorer", href: targetExplorer, icon: ExternalLink, external: true },
   { label: "0G", href: "https://0g.ai", icon: Globe, external: true },
 ];
 
@@ -27,13 +28,14 @@ const COLUMNS = [
       { label: "Market", href: "/market", external: false },
       { label: "Console", href: "/console", external: false },
       { label: "Playbook", href: "/playbook", external: false },
-      { label: "The gate", href: "#gate", external: false },
+      { label: "Docs", href: "/docs", external: false },
+      { label: "The gate", href: "/#gate", external: false },
     ],
   },
   {
     title: "Protocol",
     links: [
-      { label: "0G Chain", href: "https://chainscan-galileo.0g.ai", external: true },
+      { label: "0G Chain", href: targetExplorer, external: true },
       { label: "0G Storage", href: "https://docs.0g.ai", external: true },
       { label: "0G Compute", href: "https://docs.0g.ai", external: true },
       { label: "ERC-8004", href: "https://eips.ethereum.org/EIPS/eip-8004", external: true },
@@ -45,7 +47,7 @@ const COLUMNS = [
       { label: "Compile", href: "#features-compile", external: false },
       { label: "Verify", href: "#features-verify", external: false },
       { label: "Settle", href: "#features-settle", external: false },
-      { label: "Certificates", href: "/studio", external: false },
+      { label: "Certificates", href: "/docs#certificates", external: false },
     ],
   },
 ];

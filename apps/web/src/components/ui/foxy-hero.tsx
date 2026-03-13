@@ -386,7 +386,7 @@ export function FoxyHero({
             className="relative overflow-hidden"
             style={{
               width: "100%",
-              height: figureBleed ? "min(560px, 58vh)" : "auto",
+              height: figureBleed ? "min(640px, 64vh)" : "auto",
               aspectRatio: figure || figureBleed ? undefined : "1100 / 783",
               borderRadius: figureBleed ? 0 : "20px",
               background: figureBleed

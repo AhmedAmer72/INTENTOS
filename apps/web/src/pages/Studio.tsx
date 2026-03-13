@@ -8,7 +8,7 @@ import { isRequestAlreadyPending, isUserRejected } from "@/wallet/eip1193";
 import { api, short } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
 import { DEMO_VAULT_ABI, INTENT_EXECUTOR_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
-import { targetChain } from "@/lib/chains";
+import { targetChain, targetShortName } from "@/lib/chains";
 import { ConstraintChips } from "@/components/ConstraintChips";
 import { GiveFeedback } from "@/components/GiveFeedback";
 import { HashField } from "@/components/HashField";
@@ -871,8 +871,8 @@ function VerifyStep({
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">Bind amount and verify</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
           This 0G amount is hashed into the attestation. Changing it later makes deposit revert. Verify calls 0G
-          Compute, uploads evidence to Storage, then the oracle attests on-chain. Galileo RPC can take up to ~3
-          minutes to index those receipts.
+          Compute, uploads evidence to Storage, then the oracle attests on-chain. {targetShortName} RPC can take up
+          to ~3 minutes to index those receipts.
         </p>
       </div>
       <NextStepBanner
@@ -918,8 +918,8 @@ function VerifyStep({
             Bind IntentExecutor instead of DemoVault
             <span className="mt-0.5 block text-xs text-muted-foreground">
               {executorReady
-                ? "Live on Galileo. Use only after Beat 1 deposit works."
-                : "The contract is already on Galileo. This API session has no executor address, so Beat 1 DemoVault is the only settlement."}
+                ? `Live on ${targetShortName}. Use only after Beat 1 deposit works.`
+                : "This API session has no executor address, so Beat 1 DemoVault is the only settlement."}
             </span>
           </span>
         </label>

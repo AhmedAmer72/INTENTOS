@@ -5,7 +5,7 @@ export function StudioPreview() {
     <div className="bg-card/90 text-left">
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <div className="flex items-center gap-2 text-sm font-semibold tracking-wide text-foreground">
-          <img src="/logo.jpg" alt="" className="size-6 rounded-[22%] object-cover" />
+          <img src="/logo.png" alt="" className="h-7 w-auto object-contain mix-blend-screen" />
           INTENTOS
           <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Studio</span>
         </div>

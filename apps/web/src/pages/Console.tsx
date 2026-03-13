@@ -151,8 +151,8 @@ function AgenticV2Transfer({ meta }: { meta: Meta | null }) {
       <div className="glass rounded-2xl p-5">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Agentic ID v2</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Agentic ID v2 is already on Galileo. This API session is missing AGENTIC_ID_V2_ADDRESS — set it on the API
-          env. Do not redeploy.
+          Agentic ID v2 is missing AGENTIC_ID_V2_ADDRESS on this API session. Set the address from this network's
+          Wave 6 deploy. Do not copy Galileo addresses onto mainnet.
         </p>
       </div>
     );

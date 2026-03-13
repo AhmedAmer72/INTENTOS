@@ -5,7 +5,7 @@ import { useWallet } from "@/wallet/WalletProvider";
 import { api, short } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
 import { INTENT_BOUNTY_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
-import { targetChain } from "@/lib/chains";
+import { targetChain, targetShortName } from "@/lib/chains";
 import { VerdictStamp } from "@/components/VerdictStamp";
 import { GiveFeedback } from "@/components/GiveFeedback";
 import { FailedRules, NextStepBanner } from "@/components/NextStep";
@@ -34,7 +34,7 @@ function marketGuide(args: {
       id: "connect",
       tone: "wait",
       title: "Connect a wallet",
-      body: "Use Connect in the header. Market compile and bounty calls need a Galileo account.",
+      body: `Use Connect in the header. Market compile and bounty calls need a ${targetShortName} account.`,
     };
   }
   if (!args.live) {
@@ -105,7 +105,7 @@ function marketGuide(args: {
     id: "done",
     tone: "go",
     title: "A2A pay finished",
-    body: "Open the certificate if you want the explorer links. Give feedback from a wallet that does not own agent 361.",
+    body: "Open the certificate if you want the explorer links. Give feedback from a wallet that does not own the registered agent.",
   };
 }
 
@@ -126,7 +126,8 @@ export function Market() {
 
   const envelope: Envelope | null = compile?.envelope ?? null;
   const explorer = meta?.explorer ?? ready?.explorer;
-  const live = ready?.ok !== false;
+  const chainMismatch = Boolean(meta && meta.chainId !== targetChain.id);
+  const live = ready?.ok !== false && !chainMismatch;
   const guide = marketGuide({
     connected: isConnected,
     live,
@@ -293,6 +294,12 @@ export function Market() {
           Same gate as Studio, but Agent B pays after APPROVE. Greedy should fail. Replan, then verify again.
           Fund and claim stay locked until the stamp is green.
         </p>
+        {chainMismatch && meta && (
+          <p className="mt-4 rounded-2xl border border-challenge/40 bg-challenge/10 px-4 py-3 text-sm text-challenge">
+            Web is on chain {targetChain.id} ({targetChain.name}) but the API signed for {meta.chainId} (
+            {meta.network}). Align VITE_CHAIN_ID and ZEROG_NETWORK.
+          </p>
+        )}
       </div>
       <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
         <div className="glass rounded-3xl p-5 sm:p-8">

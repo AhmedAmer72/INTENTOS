@@ -1,5 +1,6 @@
 export {
   proposeAction,
+  clampReplanToEnvelope,
   REFERENCE_AGENT,
   normalizeProposeMode,
   type ProposeMode,

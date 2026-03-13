@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
-export const LOGO_SRC = "/logo.jpg";
+export const LOGO_SRC = "/logo.png";
 
 export function BrandMark({
   size = 36,
@@ -19,9 +19,10 @@ export function BrandMark({
       <img
         src={LOGO_SRC}
         alt=""
-        width={size}
         height={size}
-        className="shrink-0 rounded-[22%] object-cover"
+        width={Math.round(size * 1.22)}
+        className="shrink-0 object-contain mix-blend-screen"
+        style={{ height: size, width: "auto", maxHeight: size }}
       />
       {wordmark && (
         <span className="text-[15px] font-semibold tracking-[0.18em] text-white">INTENTOS</span>

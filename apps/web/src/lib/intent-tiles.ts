@@ -1,23 +1,28 @@
+import { TARGET_CHAIN_ID, targetShortName } from "@/lib/chains";
+
 function svg(markup: string) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup.trim())}`;
 }
 
+let tileSeq = 0;
+
 function frame(inner: string, accent = "#E8D4FF") {
+  const id = `t${tileSeq++}`;
   return svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 400 400" fill="none">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="400" y2="400" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#9B4FE0"/>
-      <stop offset="1" stop-color="#7A32C8"/>
+    <linearGradient id="${id}-g" x1="0" y1="0" x2="400" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A35EE8"/>
+      <stop offset="1" stop-color="#6E28BE"/>
     </linearGradient>
-    <radialGradient id="glow" cx="28%" cy="8%" r="70%">
-      <stop stop-color="#C084FC" stop-opacity="0.45"/>
+    <radialGradient id="${id}-glow" cx="28%" cy="8%" r="70%">
+      <stop stop-color="#D4A8FF" stop-opacity="0.5"/>
       <stop offset="1" stop-color="${accent}" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <rect width="400" height="400" fill="url(#g)"/>
-  <rect width="400" height="400" fill="url(#glow)"/>
-  <rect x="18" y="18" width="364" height="364" rx="28" stroke="${accent}" stroke-opacity="0.32"/>
+  <rect width="400" height="400" fill="url(#${id}-g)"/>
+  <rect width="400" height="400" fill="url(#${id}-glow)"/>
+  <rect x="18" y="18" width="364" height="364" rx="28" stroke="${accent}" stroke-opacity="0.42"/>
   ${inner}
 </svg>`);
 }
@@ -91,7 +96,7 @@ export const INTENT_TILES = [
     <rect x="44" y="206" width="312" height="120" rx="16" fill="#6B28B4" fill-opacity="0.55" stroke="#F3E8FF" stroke-opacity="0.28"/>
     <text x="64" y="246" fill="#EDE0F8" font-family="ui-monospace,monospace" font-size="12">registerIntent</text>
     <text x="64" y="276" fill="#F8F0FF" font-family="ui-monospace,monospace" font-size="13">0xF011…530b</text>
-    <text x="64" y="304" fill="#F3E8FF" font-family="Inter,sans-serif" font-size="12">Galileo · 16602</text>
+    <text x="64" y="304" fill="#F3E8FF" font-family="Inter,sans-serif" font-size="12">${targetShortName} · ${TARGET_CHAIN_ID}</text>
   `),
   frame(
     `

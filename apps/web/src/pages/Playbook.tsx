@@ -4,7 +4,7 @@ import { useWallet } from "@/wallet/WalletProvider";
 import { api, short } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
 import { DEMO_VAULT_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
-import { targetChain } from "@/lib/chains";
+import { targetChain, targetShortName } from "@/lib/chains";
 import { FailedRules, NextStepBanner } from "@/components/NextStep";
 import { PresentCertificate } from "@/components/PresentCertificate";
 import { VerdictStamp } from "@/components/VerdictStamp";
@@ -34,14 +34,15 @@ export function Playbook() {
 
   const envelope: Envelope | null = compile?.envelope ?? null;
   const explorer = meta?.explorer ?? ready?.explorer;
-  const live = ready?.ok !== false;
+  const chainMismatch = Boolean(meta && meta.chainId !== targetChain.id);
+  const live = ready?.ok !== false && !chainMismatch;
   const step1Approved = Boolean(step1?.result.verdict === "APPROVE" && step1.attest?.ok);
   const step2Approved = step2?.result.verdict === "APPROVE";
   const playbookGuide = !isConnected
     ? {
         tone: "wait" as const,
         title: "Connect a wallet",
-        body: "Use Connect in the header. Both steps and the final deposit need Galileo.",
+        body: `Use Connect in the header. Both steps and the final deposit need ${targetShortName}.`,
       }
     : !live
       ? {
@@ -221,6 +222,12 @@ export function Playbook() {
           Two verifies, one deposit. Step 2 stays locked until step 1 is APPROVE on-chain. If a step REJECTS, retry
           that step — do not deposit early.
         </p>
+        {chainMismatch && meta && (
+          <p className="mt-4 rounded-2xl border border-challenge/40 bg-challenge/10 px-4 py-3 text-sm text-challenge">
+            Web is on chain {targetChain.id} ({targetChain.name}) but the API signed for {meta.chainId} (
+            {meta.network}). Align VITE_CHAIN_ID and ZEROG_NETWORK.
+          </p>
+        )}
       </div>
       <div className="mb-6">
         <NextStepBanner title={playbookGuide.title} body={playbookGuide.body} tone={playbookGuide.tone} />

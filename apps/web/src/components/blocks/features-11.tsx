@@ -16,8 +16,8 @@ const CARDS = [
     index: "01",
     kicker: "Compile",
     title: "Intent becomes an envelope",
-    body: "Natural language is compiled on 0G Compute into hard caps, duration, leverage, and allowed actions. Ambiguity is a CHALLENGE — never a guessed number.",
-    points: ["Structured constraints", "No silent defaults", "Hash-ready document"],
+    body: "Plain language becomes a structured envelope — capital, duration, leverage, and allowed actions. If a number is missing, the system asks. It does not invent one.",
+    points: ["Hard and soft constraints", "No silent defaults", "Ready to sign and anchor"],
     tone: "orchid",
     accent: "text-primary",
     badge: "border-primary/30 bg-ink text-primary",
@@ -28,8 +28,8 @@ const CARDS = [
     index: "02",
     kicker: "Verify",
     title: "Four layers, fail-closed",
-    body: "Deterministic rules run first. TEE-backed semantics may only downgrade APPROVE. Evidence is uploaded to 0G Storage — the merkle root is what gets attested.",
-    points: ["Layer 1 cannot be overruled", "TEE-backed Layer 2", "Storage roots, not local keccak"],
+    body: "Rules run first and cannot be talked away. Attested compute checks meaning. Evidence is stored on 0G. The verdict is approve, reject, or challenge.",
+    points: ["Rules cannot be overruled", "Attested inference", "Public evidence, not a local note"],
     tone: "royal",
     accent: "text-[#D4A8FF]",
     badge: "border-[#9B4FE0]/40 bg-[#160822] text-[#D4A8FF]",
@@ -40,8 +40,8 @@ const CARDS = [
     index: "03",
     kicker: "Settle",
     title: "The revert is the product",
-    body: "DemoVault.deposit reads isApproved. A technically valid transfer that violates intent fails with IntentNotApproved. Every verdict mints a public certificate.",
-    points: ["IntentNotApproved on greedy plans", "Binding over msg.value", "Portable proof pages"],
+    body: "DemoVault only opens after APPROVE. A profitable plan that breaks the original rules is still refused. Every verdict leaves a certificate anyone can open.",
+    points: ["Greedy plans revert on-chain", "The amount must match the attestation", "Portable public proof"],
     tone: "rose",
     accent: "text-destructive",
     badge: "border-destructive/35 bg-[#160822] text-destructive",
@@ -63,7 +63,7 @@ export function Features11({ className }: { className?: string }) {
           </h2>
           <p className="mt-5 max-w-md text-sm leading-relaxed text-muted-foreground">
             INTENTOS does not replace wallets, agents, or policy engines. It answers one question: did this action
-            satisfy the human’s original intent?
+            satisfy the original intent?
           </p>
           <div className="mt-8 flex flex-wrap gap-4 text-sm">
             {CARDS.map((card, i) => (

@@ -48,7 +48,7 @@ function size(value: number | string) {
 
 const rasterCache = new Map<string, string>();
 
-function rasterizeTile(src: string, px = 192): Promise<string> {
+function rasterizeTile(src: string, px = 896): Promise<string> {
   const hit = rasterCache.get(src);
   if (hit) return Promise.resolve(hit);
   return new Promise((resolve) => {
@@ -63,9 +63,11 @@ function rasterizeTile(src: string, px = 192): Promise<string> {
         resolve(src);
         return;
       }
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, 0, 0, px, px);
       try {
-        const url = canvas.toDataURL("image/jpeg", 0.78);
+        const url = canvas.toDataURL("image/png");
         rasterCache.set(src, url);
         resolve(url);
       } catch {
@@ -266,11 +268,18 @@ export function TiltedTiles({
                       aspectRatio: String(tileAspect),
                       borderRadius,
                       flex: "0 0 auto",
-                      backgroundImage: `url("${src}")`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
+                      boxShadow: "inset 0 0 0 1px rgba(244, 223, 255, 0.16)",
                     }}
-                  />
+                  >
+                    <img
+                      src={src}
+                      alt=""
+                      draggable={false}
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                      style={{ borderRadius }}
+                    />
+                  </div>
                 ))}
               </div>
             </div>

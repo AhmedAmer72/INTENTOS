@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2Icon } from "lucide-react";
 import { BaseError, formatEther, parseEther } from "viem";
 import { useWallet } from "@/wallet/WalletProvider";
+import { isRequestAlreadyPending, isUserRejected } from "@/wallet/eip1193";
 import { api, short } from "@/lib/api";
 import { DEMO_VAULT_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
 import { targetChain } from "@/lib/chains";
@@ -110,6 +111,7 @@ export function Studio() {
 
   const chainMismatch = Boolean(meta && meta.chainId !== targetChain.id);
   const live = ready?.ok !== false && !chainMismatch;
+  const readyBlockers = ready?.checks.filter((c) => c.required && !c.ok) ?? [];
 
   const unlocked = useMemo<Record<Stage, boolean>>(() => {
     const anchored = Boolean(registerTx);
@@ -128,7 +130,13 @@ export function Studio() {
     try {
       await fn();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (isUserRejected(err)) {
+        setError("MetaMask cancelled the request. If it says “malicious site”, that is MetaMask’s phishing list on this Vercel hostname — tick the box and continue only if you opened the official INTENTOS deploy.");
+      } else if (isRequestAlreadyPending(err)) {
+        setError("MetaMask already has a pending prompt. Open the extension, finish or dismiss it, then try again.");
+      } else {
+        setError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
       setBusy(null);
     }
@@ -153,7 +161,7 @@ export function Studio() {
     });
 
   const onRegister = () =>
-    run("Signing registerIntent", async () => {
+    run("Waiting on MetaMask to sign registerIntent", async () => {
       if (!compile?.eip712 || !client || !address) {
         throw new Error("Registry or wallet missing. Deploy IntentRegistry, then connect MetaMask.");
       }
@@ -214,7 +222,7 @@ export function Studio() {
     });
 
   const onVerify = () =>
-    run("Verifying on 0G", async () => {
+    run("Verifying on 0G (Compute + Storage + attest)", async () => {
       if (!envelope || !action) throw new Error("Need a compiled intent and an agent proposal.");
       let amountWei = "0";
       try {
@@ -330,6 +338,8 @@ export function Studio() {
                   compile={compile}
                   connected={isConnected}
                   live={live}
+                  readyBlockers={readyBlockers}
+                  chainMismatch={chainMismatch}
                   busy={busy}
                   onCompile={onCompile}
                   onNext={() => setStage("anchor")}
@@ -458,6 +468,8 @@ function IntentStep({
   compile,
   connected,
   live,
+  readyBlockers,
+  chainMismatch,
   busy,
   onCompile,
   onNext,
@@ -467,6 +479,8 @@ function IntentStep({
   compile: CompileOut | null;
   connected: boolean;
   live: boolean;
+  readyBlockers: Ready["checks"];
+  chainMismatch: boolean;
   busy: string | null;
   onCompile: () => void;
   onNext: () => void;
@@ -497,7 +511,25 @@ function IntentStep({
         Insert the sample intent
       </button>
       {!connected && (
-        <p className="text-xs text-challenge">Connect a wallet first — MetaMask will offer to add {targetChain.name}.</p>
+        <p className="text-xs text-challenge">Connect a wallet first — use Connect in the header. MetaMask will offer to add {targetChain.name}.</p>
+      )}
+      {connected && !live && (
+        <div className="rounded-xl border border-challenge/40 px-3 py-2 text-xs text-challenge">
+          {chainMismatch ? (
+            <p>Wallet/API chain mismatch. Studio expects {targetChain.name} ({targetChain.id}).</p>
+          ) : readyBlockers.length ? (
+            <ul className="space-y-1">
+              {readyBlockers.map((c) => (
+                <li key={c.id}>
+                  {c.detail}
+                  {c.hint ? ` — ${c.hint}` : ""}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>The API is not ready. Open /console or GET /ready.</p>
+          )}
+        </div>
       )}
       <Button className="w-full" disabled={!connected || !live} loading={Boolean(busy)} onClick={onCompile}>
         Compile on 0G
@@ -549,6 +581,7 @@ function AnchorStep({
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">Confirm and register</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
           Only the keccak of the envelope is posted. The document stays off-chain until evidence lands in 0G Storage.
+          MetaMask must confirm the signature — if it flags this Vercel URL, that is their phishing list, not a contract bug.
         </p>
       </div>
       <div className="divide-y divide-border rounded-xl border border-border">
@@ -705,7 +738,8 @@ function VerifyStep({
         <p className="text-xs font-medium text-primary">Four-layer scan</p>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">Bind amount and verify</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          This 0G amount is hashed into the attestation. Changing it later makes deposit revert.
+          This 0G amount is hashed into the attestation. Changing it later makes deposit revert. Verify calls 0G
+          Compute, uploads evidence to Storage, then the oracle attests on-chain — often 30–90s.
         </p>
       </div>
       {action && (

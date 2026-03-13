@@ -150,6 +150,15 @@ export async function buildServer() {
   const app = Fastify({ logger: true });
   await app.register(cors, { origin: true });
 
+  app.get("/", async () => ({
+    service: "intentos-api",
+    ok: true,
+    docs: "This host is the compile/verify API. The landing page is the Vercel web app.",
+    health: "/health",
+    ready: "/ready",
+    meta: "/meta",
+  }));
+
   app.get("/health", async () => ({
     ok: true,
     network: config.network,

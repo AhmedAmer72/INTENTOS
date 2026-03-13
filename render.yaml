@@ -15,6 +15,17 @@ services:
         value: "22"
       - key: API_HOST
         value: 0.0.0.0
+      # Render terminates TLS one hop in front of the app. Without this the rate
+      # limiter would see the proxy address for every visitor and throttle them
+      # as a single client.
+      - key: TRUST_PROXY
+        value: "1"
+      # Comma-separated browser origins allowed to spend this deploy's Router key
+      # and oracle gas, e.g. https://intentos.vercel.app. Unset means any origin.
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: RATE_LIMIT_PER_MIN
+        value: "30"
       - key: DATABASE_URL
         value: file:./prisma/prod.db
       - key: ZEROG_NETWORK

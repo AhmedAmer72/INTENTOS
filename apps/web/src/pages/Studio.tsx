@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2Icon } from "lucide-react";
@@ -22,6 +22,7 @@ import { Field, FieldLabel } from "@/components/ui/v-form-8-utils/field";
 import { Input } from "@/components/ui/input";
 import { Radio, RadioGroup } from "@/components/ui/v-form-8-utils/radio-group";
 import { Textarea } from "@/components/ui/textarea";
+import { useReady } from "@/lib/useReady";
 import type { Action, CompileOut, Envelope, Meta, MeterInfo, Ready, VerifyOut } from "@/lib/types";
 import { DEMO_PLACEHOLDER } from "@/lib/types";
 
@@ -88,8 +89,8 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 export function Studio() {
   const { address, isConnected, ensureChain, client, publicClient } = useWallet();
 
-  const [ready, setReady] = useState<Ready | null>(null);
-  const [meta, setMeta] = useState<Meta | null>(null);
+  const { meta, live, apiError, probing, chainMismatch, blockers: readyBlockers, explorer } =
+    useReady();
   const [stage, setStage] = useState<Stage>("intent");
   const [text, setText] = useState("");
   const [compile, setCompile] = useState<CompileOut | null>(null);
@@ -108,22 +109,6 @@ export function Studio() {
 
   const envelope: Envelope | null = compile?.envelope ?? null;
   const stepIndex = STEPS.findIndex((s) => s.id === stage);
-  const explorer = meta?.explorer ?? ready?.explorer;
-
-  const refreshReady = useCallback(() => {
-    api<Ready>("/ready")
-      .then(setReady)
-      .catch(() => setReady(null));
-  }, []);
-
-  useEffect(() => {
-    refreshReady();
-    const id = window.setInterval(refreshReady, 15000);
-    api<Meta>("/meta")
-      .then(setMeta)
-      .catch(() => setMeta(null));
-    return () => window.clearInterval(id);
-  }, [refreshReady]);
 
   useEffect(() => {
     if (!address) return;
@@ -136,9 +121,24 @@ export function Studio() {
     return () => window.clearInterval(id);
   }, [address]);
 
-  const chainMismatch = Boolean(meta && meta.chainId !== targetChain.id);
-  const live = ready?.ok !== false && !chainMismatch;
-  const readyBlockers = ready?.checks.filter((c) => c.required && !c.ok) ?? [];
+  // The envelope is signed for one principal and the meter is debited per payer,
+  // so a session cannot survive an account switch — it would revert at register
+  // or bill the wrong wallet.
+  const lastAddress = useRef<`0x${string}` | undefined>(undefined);
+  useEffect(() => {
+    const previous = lastAddress.current;
+    lastAddress.current = address;
+    if (!previous || !address || previous === address) return;
+    setCompile(null);
+    setRegisterTx(null);
+    setAction(null);
+    setMode(null);
+    setVerify(null);
+    setSettleTx(null);
+    setSettleErr(null);
+    setStage("intent");
+    setError(`Wallet switched to ${short(address)}. The session was cleared — compile again with this account.`);
+  }, [address]);
 
   const unlocked = useMemo<Record<Stage, boolean>>(() => {
     const anchored = Boolean(registerTx);
@@ -429,6 +429,8 @@ export function Studio() {
                   compile={compile}
                   connected={isConnected}
                   live={live}
+                  probing={probing}
+                  apiError={apiError}
                   readyBlockers={readyBlockers}
                   chainMismatch={chainMismatch}
                   busy={busy}
@@ -569,6 +571,8 @@ function IntentStep({
   compile,
   connected,
   live,
+  probing,
+  apiError,
   readyBlockers,
   chainMismatch,
   busy,
@@ -580,6 +584,8 @@ function IntentStep({
   compile: CompileOut | null;
   connected: boolean;
   live: boolean;
+  probing: boolean;
+  apiError: string | null;
   readyBlockers: Ready["checks"];
   chainMismatch: boolean;
   busy: string | null;
@@ -621,7 +627,11 @@ function IntentStep({
       )}
       {connected && !live && (
         <div className="rounded-xl border border-challenge/40 px-3 py-2 text-xs text-challenge">
-          {chainMismatch ? (
+          {probing ? (
+            <p className="text-muted-foreground">Checking the 0G rail…</p>
+          ) : apiError ? (
+            <p>The INTENTOS API is unreachable, so compile is disabled. {apiError}</p>
+          ) : chainMismatch ? (
             <p>Wallet/API chain mismatch. Studio expects {targetChain.name} ({targetChain.id}).</p>
           ) : readyBlockers.length ? (
             <ul className="space-y-1">
@@ -707,6 +717,11 @@ function AnchorStep({
       {compile.challenge && (
         <p className="rounded-xl border border-challenge/40 px-3 py-2 text-sm text-challenge">
           {compile.challengeReason ?? "Some terms are still open. You can register the envelope as written, or go back and add the missing numbers."}
+        </p>
+      )}
+      {compile.storageWarning && (
+        <p className="rounded-xl border border-challenge/40 px-3 py-2 text-sm text-challenge">
+          {compile.storageWarning}
         </p>
       )}
       {!compile.eip712 && (

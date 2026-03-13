@@ -42,17 +42,38 @@ export function ConsolePage() {
   const [log, setLog] = useState<LogOut | null>(null);
   const [ready, setReady] = useState<Ready | null>(null);
   const [meta, setMeta] = useState<Meta | null>(null);
+  const [metaError, setMetaError] = useState<string | null>(null);
+  const [usageError, setUsageError] = useState<string | null>(null);
 
   useEffect(() => {
-    api<Usage>("/usage").then(setUsage).catch(() => setUsage(null));
+    api<Usage>("/usage")
+      .then((u) => {
+        setUsage(u);
+        setUsageError(null);
+      })
+      .catch((err: unknown) => {
+        setUsage(null);
+        setUsageError(err instanceof Error ? err.message : String(err));
+      });
     api<LogOut>("/log").then(setLog).catch(() => setLog(null));
-    api<Meta>("/meta").then(setMeta).catch(() => setMeta(null));
-    const loadReady = () =>
+    const poll = () => {
       api<Ready>("/ready")
         .then(setReady)
         .catch(() => setReady(null));
-    loadReady();
-    const id = window.setInterval(loadReady, 15000);
+      // Retried with /ready: a single failed load used to leave the page
+      // claiming addresses were unconfigured for the rest of the session.
+      api<Meta>("/meta")
+        .then((m) => {
+          setMeta(m);
+          setMetaError(null);
+        })
+        .catch((err: unknown) => {
+          setMeta(null);
+          setMetaError(err instanceof Error ? err.message : String(err));
+        });
+    };
+    poll();
+    const id = window.setInterval(poll, 15000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -66,7 +87,13 @@ export function ConsolePage() {
           executor wait.
         </p>
       </div>
-      {(usage?.counts.total ?? 0) === 0 ? (
+      {usageError ? (
+        <NextStepBanner
+          tone="wait"
+          title="Could not load usage"
+          body={`The API did not answer /usage, so the counts below are unknown rather than zero. ${usageError}`}
+        />
+      ) : (usage?.counts.total ?? 0) === 0 ? (
         <NextStepBanner
           tone="wait"
           title="No verifies yet"
@@ -80,12 +107,12 @@ export function ConsolePage() {
         />
       )}
       <StatusRail ready={ready} />
-      <AgenticV2Transfer meta={meta} />
+      <AgenticV2Transfer meta={meta} metaError={metaError} />
       <div className="grid gap-3 sm:grid-cols-4">
         {(["APPROVE", "REJECT", "CHALLENGE", "total"] as const).map((k) => (
           <div key={k} className="glass rounded-2xl p-4">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{k}</p>
-            <p className="mt-1 font-serif text-3xl">{usage?.counts[k] ?? 0}</p>
+            <p className="mt-1 font-serif text-3xl">{usageError ? "—" : usage?.counts[k] ?? 0}</p>
           </div>
         ))}
       </div>
@@ -113,7 +140,9 @@ export function ConsolePage() {
             {(usage?.items ?? []).length === 0 && (
               <tr>
                 <td className="px-3 py-6 text-muted-foreground" colSpan={5}>
-                  Empty until you finish a verify on Gate, Market, or Playbook.
+                  {usageError
+                    ? "Could not reach the API, so past verifies could not be listed."
+                    : "Empty until you finish a verify on Gate, Market, or Playbook."}
                 </td>
               </tr>
             )}
@@ -139,7 +168,7 @@ export function ConsolePage() {
   );
 }
 
-function AgenticV2Transfer({ meta }: { meta: Meta | null }) {
+function AgenticV2Transfer({ meta, metaError }: { meta: Meta | null; metaError: string | null }) {
   const { address, client, publicClient, ensureChain } = useWallet();
   const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
@@ -147,13 +176,17 @@ function AgenticV2Transfer({ meta }: { meta: Meta | null }) {
   const [tx, setTx] = useState<string | null>(null);
 
   if (!meta?.agenticIdV2 || !meta.agenticTokenV2) {
+    // Unreachable and unconfigured need different answers: one is a transient
+    // API problem, the other asks the operator to change their deploy.
+    const reason = metaError
+      ? `The API did not answer /meta, so the deployed addresses are unknown. ${metaError}`
+      : !meta
+        ? "Loading deployed addresses from the API…"
+        : "Agentic ID v2 is missing AGENTIC_ID_V2_ADDRESS or AGENTIC_ID_V2_TOKEN on this API session. Set them from this network's Wave 6 deploy. Do not copy Galileo addresses onto mainnet.";
     return (
       <div className="glass rounded-2xl p-5">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Agentic ID v2</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Agentic ID v2 is missing AGENTIC_ID_V2_ADDRESS on this API session. Set the address from this network's
-          Wave 6 deploy. Do not copy Galileo addresses onto mainnet.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{reason}</p>
       </div>
     );
   }
@@ -210,8 +243,8 @@ function AgenticV2Transfer({ meta }: { meta: Meta | null }) {
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder="0x recipient" />
-        <Button loading={busy} onClick={onTransfer}>
-          Transfer
+        <Button loading={busy} disabled={Boolean(tx)} onClick={onTransfer}>
+          {tx ? "Transferred" : "Transfer"}
         </Button>
       </div>
       {tx && meta.explorer && (

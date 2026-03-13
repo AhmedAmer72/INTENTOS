@@ -207,6 +207,11 @@ export const DEMO_VAULT_ABI = [
     inputs: [],
   },
   {
+    type: "error",
+    name: "AlreadySettled",
+    inputs: [],
+  },
+  {
     type: "event",
     name: "Settled",
     inputs: [

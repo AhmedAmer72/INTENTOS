@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { parseEther } from "viem";
 import { useWallet } from "@/wallet/WalletProvider";
 import { api, short } from "@/lib/api";
@@ -11,7 +11,8 @@ import { PresentCertificate } from "@/components/PresentCertificate";
 import { VerdictStamp } from "@/components/VerdictStamp";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { Action, CompileOut, Envelope, Meta, Ready, VerifyOut } from "@/lib/types";
+import { useReady } from "@/lib/useReady";
+import type { Action, CompileOut, Envelope, VerifyOut } from "@/lib/types";
 import { DEMO_PLACEHOLDER } from "@/lib/types";
 
 type Mode = "greedy" | "replan";
@@ -22,8 +23,7 @@ function bindStep(action: Action, stepId: string): Action {
 
 export function Playbook() {
   const { address, isConnected, ensureChain, client, publicClient } = useWallet();
-  const [ready, setReady] = useState<Ready | null>(null);
-  const [meta, setMeta] = useState<Meta | null>(null);
+  const { meta, live, apiError, chainMismatch, explorer } = useReady();
   const [text, setText] = useState(DEMO_PLACEHOLDER);
   const [compile, setCompile] = useState<CompileOut | null>(null);
   const [registerTx, setRegisterTx] = useState<string | null>(null);
@@ -33,10 +33,22 @@ export function Playbook() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // The envelope is signed for one principal, so an account switch invalidates
+  // everything downstream of compile.
+  const lastAddress = useRef<`0x${string}` | undefined>(undefined);
+  useEffect(() => {
+    const previous = lastAddress.current;
+    lastAddress.current = address;
+    if (!previous || !address || previous === address) return;
+    setCompile(null);
+    setRegisterTx(null);
+    setStep1(null);
+    setStep2(null);
+    setSettleTx(null);
+    setError(`Wallet switched to ${short(address)}. The session was cleared — compile again with this account.`);
+  }, [address]);
+
   const envelope: Envelope | null = compile?.envelope ?? null;
-  const explorer = meta?.explorer ?? ready?.explorer;
-  const chainMismatch = Boolean(meta && meta.chainId !== targetChain.id);
-  const live = ready?.ok !== false && !chainMismatch;
   const step1Approved = Boolean(step1?.result.verdict === "APPROVE" && step1.attest?.ok);
   const step2Approved = step2?.result.verdict === "APPROVE";
   const playbookGuide = !isConnected
@@ -98,11 +110,6 @@ export function Playbook() {
                         title: "Playbook settled",
                         body: "Open the certificate if you need explorer links.",
                       };
-
-  useEffect(() => {
-    api<Ready>("/ready").then(setReady).catch(() => setReady(null));
-    api<Meta>("/meta").then(setMeta).catch(() => setMeta(null));
-  }, []);
 
   const run = useCallback(async (label: string, fn: () => Promise<void>) => {
     setBusy(label);
@@ -208,8 +215,17 @@ export function Playbook() {
         args: [step2.vault.call.intentId, step2.vault.call.actionHash],
         value: BigInt(step2.vault.call.valueWei || "0"),
       });
-      await waitForReceipt(publicClient, hash);
+      const receipt = await waitForReceipt(publicClient, hash);
+      if (receipt.status !== "success") {
+        throw new Error(
+          `DemoVault.deposit reverted on-chain (${hash}). The playbook is not settled.`,
+        );
+      }
       setSettleTx(hash);
+      await api("/settle", {
+        method: "POST",
+        body: JSON.stringify({ actionHash: step2.result.actionHash, settleTx: hash }),
+      }).catch(() => undefined);
     });
 
   return (
@@ -225,6 +241,11 @@ export function Playbook() {
           <p className="mt-4 rounded-2xl border border-challenge/40 bg-challenge/10 px-4 py-3 text-sm text-challenge">
             Web is on chain {targetChain.id} ({targetChain.name}) but the API signed for {meta.chainId} (
             {meta.network}). Align VITE_CHAIN_ID and ZEROG_NETWORK.
+          </p>
+        )}
+        {apiError && (
+          <p className="mt-4 rounded-2xl border border-challenge/40 bg-challenge/10 px-4 py-3 text-sm text-challenge">
+            The INTENTOS API is unreachable, so compiling and verifying are disabled. {apiError}
           </p>
         )}
       </div>

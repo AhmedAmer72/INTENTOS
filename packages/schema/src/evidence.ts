@@ -62,6 +62,8 @@ export const CertificateSchema = z.object({
   storageRoot: z.string().min(1).optional(),
   computeProvider: z.string().optional(),
   teeAttested: z.boolean().optional(),
+  teeSource: z.string().optional(),
+  teeType: z.string().optional(),
   agenticToken: z.string().optional(),
   agenticUri: z.string().optional(),
 });

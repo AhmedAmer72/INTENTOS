@@ -25,19 +25,41 @@ import {
   type RouterConfig,
 } from "@intentos/zerog";
 import { encodeFunctionData, keccak256, toBytes } from "viem";
-import { config } from "./config.js";
+import { config, storageConfig } from "./config.js";
 import { prisma } from "./db.js";
+
+/** Ceiling for the mandatory Layer 4 evidence upload. */
+const EVIDENCE_UPLOAD_TIMEOUT_MS = Number(process.env.EVIDENCE_UPLOAD_TIMEOUT_MS ?? "150000");
+
+async function withDeadline<T>(promise: Promise<T>, ms: number, onTimeout: () => Error): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(onTimeout()), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 export function optionalTxHash(value?: string): `0x${string}` | undefined {
   if (typeof value !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(value)) return undefined;
   return value as `0x${string}`;
 }
 
-export function assertTeeAttested(evidence?: { teeAttested?: boolean; providerAddress?: string }) {
-  if (evidence?.teeAttested) return;
+export function assertTeeAttested(evidence?: {
+  teeAttested?: boolean;
+  teeSource?: string;
+  model?: string;
+}) {
+  if (evidence?.teeAttested && evidence.teeSource && evidence.teeSource !== "none") return;
   throw new FailClosedError(
     "tee_required",
-    "Layer 2 compute evidence is not TEE-attested. Refusing to recordVerification.",
+    `Layer 2 compute evidence is not TEE-attested (model ${evidence?.model ?? "unknown"}). ` +
+      `Pin a model the 0G Router reports as tee_attested. Refusing to recordVerification.`,
     502,
   );
 }
@@ -148,7 +170,12 @@ export async function upsertCertificate(
     confidence: number;
     checks: { severity: string; result: string }[];
     actionHash: string;
-    computeEvidence?: { providerAddress?: string; teeAttested?: boolean };
+    computeEvidence?: {
+      providerAddress?: string;
+      teeAttested?: boolean;
+      teeSource?: string;
+      teeType?: string;
+    };
   },
   evidenceRoot: string,
   txs: { registerTxHash?: `0x${string}`; verifyTxHash?: `0x${string}` } = {},
@@ -189,6 +216,8 @@ export async function upsertCertificate(
     storageRoot: evidenceRoot as `0x${string}`,
     computeProvider: result.computeEvidence?.providerAddress,
     teeAttested: result.computeEvidence?.teeAttested,
+    teeSource: result.computeEvidence?.teeSource,
+    teeType: result.computeEvidence?.teeType,
     registerTxHash: txs.registerTxHash,
     verifyTxHash: txs.verifyTxHash,
     agenticToken: config.agenticToken || undefined,
@@ -216,8 +245,46 @@ export async function upsertCertificate(
   return withSerial;
 }
 
+/**
+ * `payer` arrives from the request body, and the meter is debited by our SETTLER
+ * key, so an unchecked payer would let anyone spend a stranger's prepaid credits.
+ * The registry entry is the only payer claim backed by a signature: registerIntent
+ * recovers an EIP-712 signature from the principal. Charge that address or nobody.
+ */
+async function assertPayerIsRegisteredPrincipal(payer: `0x${string}`, intentId: `0x${string}`) {
+  if (!config.registry) {
+    throw new FailClosedError(
+      "registry_unconfigured",
+      "INTENT_REGISTRY_ADDRESS is required before the meter can charge a payer.",
+      503,
+    );
+  }
+  const client = publicClient(config.network, config.rpc);
+  const record = await client.readContract({
+    address: config.registry,
+    abi: INTENT_REGISTRY_ABI,
+    functionName: "getIntent",
+    args: [intentId],
+  });
+  if (record.status !== 1) {
+    throw new FailClosedError(
+      "intent_not_registered",
+      `Intent ${intentId} is not active on ${config.registry}. Run registerIntent from the principal wallet before verify.`,
+      409,
+    );
+  }
+  if (record.principal.toLowerCase() !== payer.toLowerCase()) {
+    throw new FailClosedError(
+      "payer_not_principal",
+      `Meter payer ${payer} does not match the registered principal ${record.principal}. Verify is billed to the wallet that signed registerIntent.`,
+      403,
+    );
+  }
+}
+
 async function debitMeter(payer: `0x${string}`, intentId: `0x${string}`) {
   if (!config.meter || !config.deployerKey) return { ok: false as const, skipped: true as const };
+  await assertPayerIsRegisteredPrincipal(payer, intentId);
   const client = publicClient(config.network, config.rpc);
   const price = await client.readContract({
     address: config.meter,
@@ -267,7 +334,7 @@ export async function flushBatchLog(force = false) {
     evidenceRoot: e.evidenceRoot,
     verifyTx: e.verifyTx,
   }));
-  const uploaded = await uploadJson({ network: config.network, privateKey: config.deployerKey }, { version: "1", events });
+  const uploaded = await uploadJson(storageConfig(), { version: "1", events });
   const root = (uploaded.rootHash.startsWith("0x") ? uploaded.rootHash : `0x${uploaded.rootHash}`) as string;
   const batch = await prisma.executionBatch.create({
     data: {
@@ -313,6 +380,18 @@ export async function runVerification(args: {
     action = { ...action, settlement };
   }
 
+  const intentId = canonicalIntentId(args.intent);
+  const payer = (args.payer && /^0x[0-9a-fA-F]{40}$/.test(args.payer)
+    ? args.payer
+    : args.intent.principal.wallet) as `0x${string}`;
+
+  // Checked before any paid work: Layer 2 inference, the 0G Storage upload, and
+  // the oracle attestation all cost the operator, so an unbillable request must
+  // be refused up front rather than after we have spent on it.
+  if (config.meter && config.deployerKey) {
+    await assertPayerIsRegisteredPrincipal(payer, intentId);
+  }
+
   const verified = await verifyAction({
     intent: args.intent,
     action,
@@ -328,10 +407,27 @@ export async function runVerification(args: {
   }
 
   const contentHash = hashCanonical(evidence);
+  // `evidence.verification` is the same object as `result`, so anything written to
+  // `result` after this point would silently change the bundle. Freeze the exact bytes
+  // that were hashed and uploaded — /proof recomputes this hash to prove integrity.
+  const evidenceJson = JSON.stringify(evidence);
   if (!config.deployerKey || config.deployerKey.length !== 66) {
     throw new FailClosedError("missing_deployer", "DEPLOYER_PRIVATE_KEY is required to pay 0G Storage upload fees.", 503);
   }
-  const uploaded = await uploadJson({ network: config.network, privateKey: config.deployerKey }, evidence);
+  // Layer 4 cannot be skipped, but it also cannot hang: the storage SDK waits for
+  // a node to sync past the upload tx with no ceiling, and a lagging node would
+  // hold the HTTP request open until the browser gave up with no explanation.
+  const uploaded = await withDeadline(
+    uploadJson(storageConfig(), JSON.parse(evidenceJson)),
+    EVIDENCE_UPLOAD_TIMEOUT_MS,
+    () =>
+      new FailClosedError(
+        "storage_upload_timeout",
+        `0G Storage did not confirm the evidence upload within ${Math.round(EVIDENCE_UPLOAD_TIMEOUT_MS / 1000)}s. ` +
+          `Nothing was attested. Retry verify — the storage node was still syncing.`,
+        504,
+      ),
+  );
   const evidenceRoot = (
     uploaded.rootHash.startsWith("0x") ? uploaded.rootHash : `0x${uploaded.rootHash}`
   ) as `0x${string}`;
@@ -352,11 +448,6 @@ export async function runVerification(args: {
   });
 
   const registerTx = optionalTxHash(args.registerTx);
-  const payer = (args.payer && /^0x[0-9a-fA-F]{40}$/.test(args.payer)
-    ? args.payer
-    : args.intent.principal.wallet) as `0x${string}`;
-  const intentId = canonicalIntentId(args.intent);
-
   const meter = await debitMeter(payer, intentId);
 
   const row = await prisma.verification.create({
@@ -366,7 +457,7 @@ export async function runVerification(args: {
       verdict: result.verdict,
       evidenceRoot,
       resultJson: JSON.stringify({ ...result, contentHash }),
-      evidenceJson: JSON.stringify(evidence),
+      evidenceJson,
       actionJson: JSON.stringify(action),
       registerTx,
       payer,

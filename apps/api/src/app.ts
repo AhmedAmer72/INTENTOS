@@ -17,7 +17,6 @@ import { proposeAction, REFERENCE_AGENT, normalizeProposeMode } from "@intentos/
 import {
   AGENTIC_ID_ABI,
   AGENTIC_ID_V2_ABI,
-  FailClosedError,
   INTENT_REGISTRY_ABI,
   VERIFICATION_METER_ABI,
   downloadJson,
@@ -30,7 +29,8 @@ import {
   walletFromKey,
   type RouterConfig,
 } from "@intentos/zerog";
-import { config } from "./config.js";
+import { config, storageConfig } from "./config.js";
+import { rateLimitOptionsFromEnv, registerRateLimit } from "./rate-limit.js";
 
 const NET = config.network === "mainnet" ? "mainnet" : "galileo";
 const FUND = NET === "mainnet" ? "https://get.0g.ai" : "https://faucet.0g.ai";
@@ -81,6 +81,9 @@ function requireAgentId(): `0x${string}` | null {
   if (!config.agentIdRaw) return null;
   return toBytes32AgentId(config.agentIdRaw);
 }
+
+/** 0G Storage finality waits are unbounded in the SDK; compile must not be. */
+const ENVELOPE_UPLOAD_TIMEOUT_MS = Number(process.env.ENVELOPE_UPLOAD_TIMEOUT_MS ?? "60000");
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -164,8 +167,23 @@ async function runVerifyRoute(
 }
 
 export async function buildServer() {
-  const app = Fastify({ logger: true });
-  await app.register(cors, { origin: true });
+  // TRUST_PROXY is the number of reverse-proxy hops in front of this process
+  // (1 on Render/Fly). Counting hops instead of `true` means the client cannot
+  // prepend a fake X-Forwarded-For entry to dodge the rate limiter.
+  const proxyHops = Number(process.env.TRUST_PROXY ?? "0");
+  const trustedHops = Number.isFinite(proxyHops) && proxyHops > 0 ? Math.floor(proxyHops) : 0;
+  const app = Fastify({
+    logger: true,
+    trustProxy: trustedHops > 0 ? (_address: string, hop: number) => hop < trustedHops : false,
+  });
+  // ALLOWED_ORIGINS pins the browsers that may spend this deploy's Router key and
+  // oracle gas. Unset stays permissive so local dev and preview URLs keep working.
+  const allowed = (process.env.ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+  await app.register(cors, { origin: allowed.length ? allowed : true });
+  registerRateLimit(app, rateLimitOptionsFromEnv());
 
   app.get("/", async () => ({
     service: "intentos-api",
@@ -217,16 +235,22 @@ export async function buildServer() {
             : `Set ZEROG_ROUTER_MODEL=${chat ?? "a chat model from GET /v1/models"}`,
         });
         const pinnedModel = routerModelsFromList(listed).find((m) => m.id === config.routerModel);
+        const teeModels = routerModelsFromList(listed)
+          .filter((m) => m.tee_attested === true)
+          .map((m) => m.id);
         checks.push({
           id: "tee_model",
+          // Verify fail-closes without TEE evidence, so this blocks the product.
           ok: pinnedModel?.tee_attested === true,
-          required: false,
+          required: true,
           detail:
             pinnedModel?.tee_attested === true
-              ? `${config.routerModel} reports tee_attested`
-              : pinnedModel?.tee_attested === false
-                ? `${config.routerModel} is not tee_attested`
-                : `${config.routerModel} did not report tee_attested — verify still requires Layer 2 TEE evidence`,
+              ? `${config.routerModel} is TEE-attested (${pinnedModel.tee_type ?? "TEE"} via ${pinnedModel.tee_verifier ?? "0G Router"})`
+              : `${config.routerModel} is not reported as tee_attested — /verify will refuse to attest`,
+          hint:
+            pinnedModel?.tee_attested === true
+              ? undefined
+              : `Set ZEROG_ROUTER_MODEL to a TEE-attested model: ${teeModels.join(", ") || "(none reported)"}`,
         });
       } catch (err) {
         checks.push({
@@ -645,6 +669,7 @@ export async function buildServer() {
     compiled.envelope.status = compiled.challenge ? "DRAFT" : "ACTIVE";
 
     let envelopeRoot: string | null = null;
+    let storageWarning: string | null = null;
     if (config.storageUpload) {
       if (!config.deployerKey || config.deployerKey.length !== 66) {
         return reply.code(503).send({
@@ -653,16 +678,22 @@ export async function buildServer() {
         });
       }
       try {
-        const uploaded = await uploadJson(
-          { network: config.network, privateKey: config.deployerKey },
-          intentHashPayload(compiled.envelope),
+        // The SDK waits for a storage node to sync past the upload tx, and a
+        // lagging node can hold that open for many minutes. The envelope copy is
+        // provenance, not consensus: the intent hash and the EIP-712 payload are
+        // already final, so bound the wait and say so rather than hanging the
+        // first step of the funnel. Evidence upload at verify stays mandatory.
+        const uploaded = await withTimeout(
+          uploadJson(storageConfig(), intentHashPayload(compiled.envelope)),
+          ENVELOPE_UPLOAD_TIMEOUT_MS,
+          "envelope upload",
         );
         envelopeRoot = uploaded.rootHash.startsWith("0x") ? uploaded.rootHash : `0x${uploaded.rootHash}`;
       } catch (err) {
-        return reply.code(502).send({
-          error: `Envelope upload to 0G Storage failed: ${err instanceof Error ? err.message : String(err)}`,
-          code: "envelope_upload_failed",
-        });
+        storageWarning =
+          `The envelope copy could not be pinned to 0G Storage right now (${err instanceof Error ? err.message : String(err)}). ` +
+          `Registering and verifying still work — only the downloadable envelope copy is missing.`;
+        req.log.warn({ err }, "envelope upload to 0G Storage failed");
       }
     }
 
@@ -689,6 +720,7 @@ export async function buildServer() {
       ...compiled,
       intentHash,
       envelopeRoot,
+      storageWarning,
       eip712: config.registry
         ? {
             domain: {
@@ -743,7 +775,7 @@ export async function buildServer() {
     }
     try {
       const payload = await withTimeout(
-        downloadJson({ network: config.network, privateKey: config.deployerKey }, row.envelopeRoot),
+        downloadJson(storageConfig(), row.envelopeRoot),
         12_000,
         "envelope download",
       );
@@ -952,7 +984,12 @@ export async function buildServer() {
       where: { actionHash },
       include: { intent: true },
     });
-    if (!row) return reply.code(404).send({ error: "not found" });
+    if (!row) {
+      return reply.code(404).send({
+        error: `No verification recorded for action ${actionHash}. Certificates only exist after a verify completes.`,
+        code: "proof_not_found",
+      });
+    }
     const evidence = JSON.parse(row.evidenceJson);
     const stored = JSON.parse(row.resultJson) as { contentHash?: string };
     const localHash = hashCanonical(evidence);
@@ -961,10 +998,7 @@ export async function buildServer() {
     if (config.deployerKey && config.storageUpload && row.evidenceRoot) {
       try {
         const fromStorage = await withTimeout(
-          downloadJson(
-            { network: config.network, privateKey: config.deployerKey },
-            row.evidenceRoot,
-          ),
+          downloadJson(storageConfig(), row.evidenceRoot),
           12_000,
           "0G Storage download",
         );
@@ -1126,7 +1160,7 @@ export async function buildServer() {
         toTs: b.toTs,
         createdAt: b.createdAt,
         explorer: config.explorer,
-        storage: `https://indexer-storage-testnet-turbo.0g.ai`,
+        storage: config.storageIndexer,
       })),
     };
   });

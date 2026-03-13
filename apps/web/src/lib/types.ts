@@ -71,6 +71,8 @@ export type CompileOut = {
   usedModel?: string;
   intentHash: `0x${string}`;
   envelopeRoot?: string | null;
+  /** Set when the envelope copy could not be pinned to 0G Storage in time. */
+  storageWarning?: string | null;
   eip712: Eip712 | null;
 };
 

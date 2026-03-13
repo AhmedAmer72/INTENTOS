@@ -21,6 +21,7 @@ export function MeterStrip({
 }) {
   const { client, publicClient, ensureChain } = useWallet();
   const [meter, setMeter] = useState<MeterInfo | null>(null);
+  const [depositing, setDepositing] = useState(false);
 
   const refresh = useCallback(() => {
     if (!address) return;
@@ -49,6 +50,7 @@ export function MeterStrip({
       onError?.("VerificationMeter is not configured.");
       return;
     }
+    setDepositing(true);
     onBusy?.("Depositing meter credits");
     try {
       await ensureChain();
@@ -59,11 +61,15 @@ export function MeterStrip({
         functionName: "deposit",
         value: price > 0n ? price * 20n : parseEther("0.002"),
       });
-      await waitForReceipt(publicClient, hash);
+      const receipt = await waitForReceipt(publicClient, hash);
+      if (receipt.status !== "success") {
+        throw new Error(`VerificationMeter.deposit reverted on-chain (${hash}). No credits were added.`);
+      }
       refresh();
     } catch (err) {
       onError?.(explainTxError(err));
     } finally {
+      setDepositing(false);
       onBusy?.(null);
     }
   };
@@ -79,6 +85,7 @@ export function MeterStrip({
           variant="outline"
           className="h-6 px-2 text-[11px]"
           title="Prepaid 0G for verify fees — not the DemoVault deposit"
+          loading={depositing}
           onClick={deposit}
         >
           Add credits

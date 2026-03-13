@@ -60,18 +60,21 @@ export function GiveFeedback({
   const value = verdict === "APPROVE" ? 1n : verdict === "REJECT" ? -1n : 0n;
 
   const submit = async () => {
-    if (!isConnected || !address) {
-      await connect();
-      return;
-    }
     if (self) {
       setErr("This wallet owns the agent. ERC-8004 rejects self-feedback — switch to the principal wallet.");
       return;
     }
-    if (!client) return;
     setBusy(true);
     setErr(null);
     try {
+      if (!isConnected || !address) {
+        await connect();
+        return;
+      }
+      if (!client) {
+        setErr("No wallet client available. Reconnect the wallet and try again.");
+        return;
+      }
       await ensureChain();
       const hash = await writeTargetContract(client, publicClient, {
         account: address,
@@ -90,12 +93,20 @@ export function GiveFeedback({
         ],
       });
       const receipt = await waitForReceipt(publicClient, hash);
+      // Only surface the tx as feedback once the chain confirms it. A reverted
+      // receipt must never render as a success link.
+      if (receipt.status !== "success") {
+        throw new Error(`giveFeedback reverted on-chain (${hash}).`);
+      }
       setTx(hash);
-      if (receipt.status !== "success") throw new Error("giveFeedback reverted on-chain.");
-      await api("/reputation", {
-        method: "POST",
-        body: JSON.stringify({ actionHash, reputationTx: hash }),
-      }).catch(() => undefined);
+      try {
+        await api("/reputation", {
+          method: "POST",
+          body: JSON.stringify({ actionHash, reputationTx: hash }),
+        });
+      } catch {
+        setErr("Feedback is on-chain, but the INTENTOS API did not record it. The certificate may not show it.");
+      }
     } catch (e) {
       const text = e instanceof BaseError ? `${e.shortMessage} ${e.message}` : String(e);
       if (/self/i.test(text) || /owner/i.test(text)) {
@@ -115,8 +126,16 @@ export function GiveFeedback({
           Connected wallet owns agent #{id.toString()}. Use a different wallet to giveFeedback.
         </p>
       ) : (
-        <Button className="w-full" variant="outline" loading={busy} onClick={submit}>
-          Give ERC-8004 feedback ({verdict} {value > 0n ? "+1" : value < 0n ? "−1" : "0"})
+        <Button
+          className="w-full"
+          variant="outline"
+          loading={busy}
+          disabled={Boolean(tx)}
+          onClick={submit}
+        >
+          {tx
+            ? "Feedback recorded"
+            : `Give ERC-8004 feedback (${verdict} ${value > 0n ? "+1" : value < 0n ? "−1" : "0"})`}
         </Button>
       )}
       {tx && explorer && (

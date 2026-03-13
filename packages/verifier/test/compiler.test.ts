@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { compileDeterministic, compileIntent, detectAmbiguity, mergeCompiledConstraints } from "../src/compiler.js";
+import {
+  compileDeterministic,
+  compileIntent,
+  detectAmbiguity,
+  mergeCompiledConstraints,
+  reconcileAllowedActions,
+} from "../src/compiler.js";
 import { DEMO_INTENT_TEXT } from "@intentos/schema";
 
 const ctx = {
@@ -64,6 +70,29 @@ describe("intent compiler", () => {
     );
     const filled = zeroCap.find((c) => c.type === "max_capital");
     expect(filled && filled.type === "max_capital" && filled.value).toBe(5000);
+  });
+
+  it("keeps allowedActions and the allowed_actions constraint in agreement", () => {
+    const { envelope } = compileDeterministic(DEMO_INTENT_TEXT, ctx);
+    // The model is free to answer with its own vocabulary; the enforced
+    // constraint must still be the list the envelope advertises, otherwise the
+    // replan clamp and Layer 1 disagree and no plan can ever pass.
+    const reconciled = reconcileAllowedActions(envelope.constraints.hard, ["lend", "stake"]);
+    expect(reconciled).toEqual(["deposit", "withdraw", "claim"]);
+  });
+
+  it("keeps the model's allowlist when it arrived as a constraint", () => {
+    const hard = mergeCompiledConstraints(
+      [{ id: "c-actions", type: "allowed_actions", severity: "hard", label: "Only lend", actions: ["lend"] }],
+      compileDeterministic(DEMO_INTENT_TEXT, ctx).envelope.constraints.hard,
+    );
+    expect(reconcileAllowedActions(hard, ["deposit"])).toEqual(["lend"]);
+  });
+
+  it("falls back to the envelope list when nothing constrains actions", () => {
+    const { envelope } = compileDeterministic("Buy me a laptop under $1500", ctx);
+    expect(envelope.constraints.hard.some((c) => c.type === "allowed_actions")).toBe(false);
+    expect(reconcileAllowedActions(envelope.constraints.hard, ["purchase"])).toEqual(["purchase"]);
   });
 
   it("refuses to compile without a Router API key", async () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { parseEther } from "viem";
 import { useWallet } from "@/wallet/WalletProvider";
@@ -13,7 +13,8 @@ import { FailedRules, NextStepBanner } from "@/components/NextStep";
 import { PresentCertificate } from "@/components/PresentCertificate";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { Action, CompileOut, Envelope, Meta, Ready, VerifyOut } from "@/lib/types";
+import { useReady } from "@/lib/useReady";
+import type { Action, CompileOut, Envelope, VerifyOut } from "@/lib/types";
 import { DEMO_PLACEHOLDER } from "@/lib/types";
 
 type Mode = "greedy" | "replan";
@@ -112,8 +113,7 @@ function marketGuide(args: {
 
 export function Market() {
   const { address, isConnected, ensureChain, client, publicClient } = useWallet();
-  const [ready, setReady] = useState<Ready | null>(null);
-  const [meta, setMeta] = useState<Meta | null>(null);
+  const { meta, live, apiError, chainMismatch, explorer } = useReady();
   const [text, setText] = useState(DEMO_PLACEHOLDER);
   const [compile, setCompile] = useState<CompileOut | null>(null);
   const [registerTx, setRegisterTx] = useState<string | null>(null);
@@ -125,10 +125,24 @@ export function Market() {
   const [bountyTx, setBountyTx] = useState<string | null>(null);
   const [claimTx, setClaimTx] = useState<string | null>(null);
 
+  // The envelope is signed for one principal, so an account switch invalidates
+  // everything downstream of compile.
+  const lastAddress = useRef<`0x${string}` | undefined>(undefined);
+  useEffect(() => {
+    const previous = lastAddress.current;
+    lastAddress.current = address;
+    if (!previous || !address || previous === address) return;
+    setCompile(null);
+    setRegisterTx(null);
+    setAction(null);
+    setMode(null);
+    setVerify(null);
+    setBountyTx(null);
+    setClaimTx(null);
+    setError(`Wallet switched to ${short(address)}. The session was cleared — compile again with this account.`);
+  }, [address]);
+
   const envelope: Envelope | null = compile?.envelope ?? null;
-  const explorer = meta?.explorer ?? ready?.explorer;
-  const chainMismatch = Boolean(meta && meta.chainId !== targetChain.id);
-  const live = ready?.ok !== false && !chainMismatch;
   const guide = marketGuide({
     connected: isConnected,
     live,
@@ -141,11 +155,6 @@ export function Market() {
     claimed: Boolean(claimTx),
   });
   const approved = verify?.result.verdict === "APPROVE";
-
-  useEffect(() => {
-    api<Ready>("/ready").then(setReady).catch(() => setReady(null));
-    api<Meta>("/meta").then(setMeta).catch(() => setMeta(null));
-  }, []);
 
   const run = useCallback(async (label: string, fn: () => Promise<void>) => {
     setBusy(label);
@@ -296,6 +305,11 @@ export function Market() {
           <p className="mt-4 rounded-2xl border border-challenge/40 bg-challenge/10 px-4 py-3 text-sm text-challenge">
             Web is on chain {targetChain.id} ({targetChain.name}) but the API signed for {meta.chainId} (
             {meta.network}). Align VITE_CHAIN_ID and ZEROG_NETWORK.
+          </p>
+        )}
+        {apiError && (
+          <p className="mt-4 rounded-2xl border border-challenge/40 bg-challenge/10 px-4 py-3 text-sm text-challenge">
+            The INTENTOS API is unreachable, so compiling and verifying are disabled. {apiError}
           </p>
         )}
       </div>

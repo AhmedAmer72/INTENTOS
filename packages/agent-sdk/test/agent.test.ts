@@ -82,4 +82,18 @@ describe("live 0G agent", () => {
     expect(out.action.actionType).toBe("deposit");
     expect(clampReplanToEnvelope(intent, template).params.capital).toBe(5000);
   });
+
+  it("clamps to the enforced constraint when the envelope allowlist contradicts it", () => {
+    // Layer 1 evaluates the allowed_actions constraint, not envelope.allowedActions.
+    // Following the envelope list here used to produce a plan that could never
+    // pass — every replan came back REJECT with a failed allowed_actions check.
+    const intent = demoEnvelope();
+    intent.allowedActions = ["lend"];
+    const template = strategyB(intent.intentId, intent.agent.agenticId);
+    const clamped = clampReplanToEnvelope(intent, { ...template, actionType: "lend" });
+    const constraint = intent.constraints.hard.find((c) => c.type === "allowed_actions");
+    expect(constraint && constraint.type === "allowed_actions" && constraint.actions).toContain(
+      clamped.actionType,
+    );
+  });
 });

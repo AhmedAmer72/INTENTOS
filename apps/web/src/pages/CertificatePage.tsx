@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import canonicalize from "canonicalize";
 import { BrandMark } from "@/components/BrandMark";
 import { keccak256, stringToBytes } from "viem";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { GiveFeedback } from "@/components/GiveFeedback";
 import { HashField } from "@/components/HashField";
 import { PresentCertificate } from "@/components/PresentCertificate";
@@ -67,6 +67,7 @@ export function CertificatePage() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [clientHash, setClientHash] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (!hash) return;
@@ -86,7 +87,10 @@ export function CertificatePage() {
           setClientHash("");
         }
       })
-      .catch((e) => setErr(String(e)));
+      .catch((e: unknown) => {
+        setNotFound(e instanceof ApiError && e.status === 404);
+        setErr(e instanceof Error ? e.message : String(e));
+      });
   }, [hash]);
 
   const contentMatch = useMemo(() => {
@@ -96,15 +100,26 @@ export function CertificatePage() {
 
   if (err) {
     return (
-      <div className="p-10">
-        <p className="text-reject">{err}</p>
-        <Link className="mt-4 inline-block text-brass" to="/studio">
-          Back to studio
+      <div className="mx-auto max-w-xl px-4 py-16 text-center">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Certificate</p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+          {notFound ? "No certificate for this action" : "Certificate could not be loaded"}
+        </h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          {notFound
+            ? "A certificate is minted when a verify completes. Check the action hash in the URL, or run a verify in Gate first."
+            : err}
+        </p>
+        <Link
+          className="mt-6 inline-block rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+          to="/studio"
+        >
+          Go to Gate
         </Link>
       </div>
     );
   }
-  if (!proof) return <p className="p-10 text-mute">Loading certificate…</p>;
+  if (!proof) return <p className="p-10 text-center text-mute">Loading certificate…</p>;
 
   const v = cert?.verdict ?? proof.verification.verdict;
 

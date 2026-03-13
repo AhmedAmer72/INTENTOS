@@ -1,4 +1,17 @@
-export const API = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8787";
+const configuredApi = import.meta.env.VITE_API_URL?.trim();
+
+/**
+ * A production bundle must never silently talk to the developer's loopback API.
+ * Loopback stays the dev default; a misconfigured production build surfaces the
+ * problem on every request instead of quietly failing against 127.0.0.1.
+ */
+export const API_MISCONFIGURED = !configuredApi && !import.meta.env.DEV;
+
+export const API_CONFIG_ERROR =
+  "VITE_API_URL is not set for this build. Point it at the INTENTOS API origin and redeploy — " +
+  "a production bundle will not fall back to http://127.0.0.1:8787.";
+
+export const API = configuredApi || "http://127.0.0.1:8787";
 
 export class ApiError extends Error {
   status: number;
@@ -24,6 +37,7 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, init?: RequestInit & { timeoutMs?: number }): Promise<T> {
+  if (API_MISCONFIGURED) throw new Error(API_CONFIG_ERROR);
   const { timeoutMs = 180_000, signal: outer, ...rest } = init ?? {};
   const ac = new AbortController();
   const onAbort = () => ac.abort();

@@ -41,7 +41,11 @@ export async function uploadBytes(cfg: StorageConfig, data: Uint8Array): Promise
   if (treeErr) throw new Error(String(treeErr));
   const rootHash = tree?.rootHash();
   if (!rootHash) throw new Error("merkle tree produced no root hash");
-  const [tx, uploadErr] = await indexer.upload(file, rpc, signer);
+  // The storage SDK ships CommonJS typings, so its `Signer` resolves to ethers'
+  // CJS build while our ESM `Wallet` resolves to the ESM build. Same class at
+  // runtime, two nominal types to tsc.
+  type SdkSigner = Parameters<typeof indexer.upload>[2];
+  const [tx, uploadErr] = await indexer.upload(file, rpc, signer as unknown as SdkSigner);
   if (uploadErr) throw new Error(String(uploadErr));
   const txHash =
     tx && typeof tx === "object" && "txHash" in tx

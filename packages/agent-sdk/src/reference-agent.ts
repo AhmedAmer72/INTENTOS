@@ -104,7 +104,11 @@ export function clampReplanToEnvelope(intent: IntentEnvelope, action: ProposedAc
     }
   }
 
-  if (intent.allowedActions.length > 0 && !intent.allowedActions.includes(actionType)) {
+  // Layer 1 only falls back to `allowedActions` when there is no allowed_actions
+  // constraint, so honouring the envelope list here would undo the clamp above
+  // and leave the plan failing the constraint it just satisfied.
+  const hasActionConstraint = intent.constraints.hard.some((c) => c.type === "allowed_actions");
+  if (!hasActionConstraint && intent.allowedActions.length > 0 && !intent.allowedActions.includes(actionType)) {
     actionType = intent.allowedActions[0] ?? actionType;
   }
   const maxRisk = intent.riskProfile.maxRisk;

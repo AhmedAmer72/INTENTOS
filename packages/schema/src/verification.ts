@@ -45,12 +45,22 @@ export const Layer3ResultSchema = z.object({
   fields: z.array(ConsistencyFieldSchema),
 });
 
+/**
+ * How `teeAttested` was established. A provider address alone proves nothing
+ * about a TEE, so it is never a valid source.
+ */
+export const TeeSourceSchema = z.enum(["request_trace", "model_registry", "none"]);
+
 export const ComputeEvidenceSchema = z.object({
   providerAddress: z.string().optional(),
   model: z.string(),
   requestId: z.string().optional(),
   zgResKey: z.string().optional(),
   teeAttested: z.boolean(),
+  teeSource: TeeSourceSchema.default("none"),
+  teeType: z.string().optional(),
+  teeVerifier: z.string().optional(),
+  verifiability: z.string().optional(),
   promptHash: Bytes32Schema,
   responseHash: Bytes32Schema,
   x0gTrace: z.unknown().optional(),

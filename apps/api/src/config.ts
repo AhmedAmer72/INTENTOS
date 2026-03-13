@@ -4,8 +4,11 @@ import { fileURLToPath } from "node:url";
 import { resolveNetwork, type ZeroGNetworkName } from "@intentos/zerog";
 
 const here = dirname(fileURLToPath(import.meta.url));
+// Precedence: real process env > repo-root .env > apps/api/.env.
+// dotenv never overwrites an already-set key, so load the winners first.
+// Never use override: it would let a stray .env file beat the hosting platform's env.
+loadEnv({ path: resolve(here, "../../../.env") });
 loadEnv({ path: resolve(here, "../.env") });
-loadEnv({ path: resolve(here, "../../../.env"), override: true });
 
 function req(name: string, fallback = ""): string {
   return process.env[name] ?? fallback;
@@ -49,4 +52,18 @@ export const config = {
   verifyPriceWei: BigInt(req("VERIFY_PRICE_WEI", "100000000000000")),
   identityRegistry: net.identityRegistry,
   reputationRegistry: net.reputationRegistry,
+  storageIndexer:
+    network === "mainnet"
+      ? req("ZEROG_STORAGE_INDEXER_MAINNET", net.storageIndexer)
+      : req("ZEROG_STORAGE_INDEXER_TESTNET", net.storageIndexer),
 };
+
+/** 0G Storage credentials plus the operator's configured indexer/RPC overrides. */
+export function storageConfig() {
+  return {
+    network: config.network,
+    privateKey: config.deployerKey as `0x${string}`,
+    indexerUrl: config.storageIndexer,
+    rpcUrl: config.rpc,
+  };
+}

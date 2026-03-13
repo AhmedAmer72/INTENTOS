@@ -13,6 +13,10 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    // Pinned so tsc stops auto-loading every package under node_modules/@types.
+    // A hoisted deprecated stub (@types/minimatch) has no entry point and fails
+    // the whole build with TS2688 when the scan is implicit.
+    "types": ["node"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true

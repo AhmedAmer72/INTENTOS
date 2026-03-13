@@ -111,6 +111,19 @@ export function mergeCompiledConstraints(llm: unknown, deterministic: Constraint
   return [...byType.values()];
 }
 
+/**
+ * The envelope carries the action allowlist twice: as `allowedActions` and as an
+ * `allowed_actions` hard constraint. If the two disagree, replan can never
+ * converge — the clamp rewrites actionType to satisfy one list and Layer 1 then
+ * fails it against the other, so every plan REJECTs forever. The constraint is
+ * what the rules engine enforces, so it wins.
+ */
+export function reconcileAllowedActions(hard: Constraint[], fallback: string[]): string[] {
+  const constraint = hard.find((c) => c.type === "allowed_actions");
+  if (constraint && "actions" in constraint && constraint.actions.length) return constraint.actions;
+  return fallback;
+}
+
 export function compileDeterministic(
   text: string,
   ctx: {
@@ -318,6 +331,7 @@ export async function compileIntent(
     );
   }
 
+  const hard = mergeCompiledConstraints(draft.hard, deterministic.envelope.constraints.hard);
   const envelope: IntentEnvelope = {
     ...deterministic.envelope,
     objective: {
@@ -325,12 +339,13 @@ export async function compileIntent(
       description: draft.objective?.description ?? deterministic.envelope.objective.description,
     },
     constraints: {
-      hard: mergeCompiledConstraints(draft.hard, deterministic.envelope.constraints.hard),
+      hard,
       soft: mergeCompiledConstraints(draft.soft, deterministic.envelope.constraints.soft),
     },
-    allowedActions: draft.allowedActions?.length
-      ? draft.allowedActions
-      : deterministic.envelope.allowedActions,
+    allowedActions: reconcileAllowedActions(
+      hard,
+      draft.allowedActions?.length ? draft.allowedActions : deterministic.envelope.allowedActions,
+    ),
     riskProfile: {
       maxRisk: draft.riskProfile?.maxRisk ?? deterministic.envelope.riskProfile.maxRisk,
     },

@@ -28,14 +28,17 @@ export function PresentCertificate({
   if (!consumer || !intentId || !actionHash) return null;
 
   const present = async () => {
-    if (!isConnected || !address) {
-      await connect();
-      return;
-    }
-    if (!client) return;
     setBusy(true);
     setErr(null);
     try {
+      if (!isConnected || !address) {
+        await connect();
+        return;
+      }
+      if (!client) {
+        setErr("No wallet client available. Reconnect the wallet and try again.");
+        return;
+      }
       await ensureChain();
       const hash = await writeTargetContract(client, publicClient, {
         account: address,
@@ -45,10 +48,11 @@ export function PresentCertificate({
         args: [intentId as `0x${string}`, actionHash as `0x${string}`],
       });
       const receipt = await waitForReceipt(publicClient, hash);
-      setTx(hash);
+      // Confirm before showing the link — a reverted accept is not a presentation.
       if (receipt.status !== "success") {
-        throw new Error("CertificateConsumer.accept reverted on-chain.");
+        throw new Error(`CertificateConsumer.accept reverted on-chain (${hash}).`);
       }
+      setTx(hash);
     } catch (e) {
       const text = e instanceof BaseError ? `${e.shortMessage} ${e.message}` : String(e);
       if (/AlreadyConsumed/i.test(text)) {
@@ -65,8 +69,14 @@ export function PresentCertificate({
 
   return (
     <div className="space-y-2">
-      <Button className="w-full" variant="outline" disabled={disabled} loading={busy} onClick={present}>
-        Present certificate
+      <Button
+        className="w-full"
+        variant="outline"
+        disabled={disabled || Boolean(tx)}
+        loading={busy}
+        onClick={present}
+      >
+        {tx ? "Certificate presented" : "Present certificate"}
       </Button>
       {tx && explorer && (
         <a className="block text-center text-xs text-primary underline" href={`${explorer}/tx/${tx}`} target="_blank" rel="noreferrer">

@@ -17,7 +17,8 @@ const TABS = [
 ];
 
 export function AppShell() {
-  const { address, isConnected, connect, disconnect } = useWallet();
+  const { address, isConnected, connect, disconnect, wrongNetwork, chainId, ensureChain, restoring } =
+    useWallet();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,8 +76,15 @@ export function AppShell() {
 
             <div className="flex shrink-0 items-center gap-2">
               <MeterStrip address={address} onBusy={setBusy} onError={setError} />
-              <span className="hidden rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] text-white/60 sm:inline">
-                {targetChain.name}
+              <span
+                className={[
+                  "hidden rounded-full border px-2.5 py-1 text-[11px] sm:inline",
+                  wrongNetwork
+                    ? "border-challenge/50 bg-challenge/10 text-challenge"
+                    : "border-primary/20 bg-primary/5 text-white/60",
+                ].join(" ")}
+              >
+                {wrongNetwork ? `Wrong network · chain ${chainId ?? "?"}` : targetChain.name}
               </span>
               {isConnected ? (
                 <div className="flex items-center gap-1.5">
@@ -99,7 +107,9 @@ export function AppShell() {
               ) : (
                 <Button
                   size="sm"
-                  loading={busy === "Connecting wallet"}
+                  // Restoring an already-authorised session takes a moment; a
+                  // click during that window opens a second wallet prompt.
+                  loading={busy === "Connecting wallet" || restoring}
                   onClick={() => {
                     setBusy("Connecting wallet");
                     connect()
@@ -113,6 +123,29 @@ export function AppShell() {
             </div>
           </div>
         </div>
+        {wrongNetwork && (
+          <div className="mx-auto mt-2 flex max-w-6xl flex-wrap items-center justify-center gap-3 rounded-xl border border-challenge/40 bg-challenge/10 px-4 py-2 text-center text-xs text-challenge">
+            <span>
+              Your wallet is on chain {chainId ?? "unknown"}. INTENTOS settles on {targetChain.name} (
+              {targetChain.id}). Nothing will be signed until you switch.
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 border-challenge/50 px-2 text-[11px] text-challenge hover:bg-challenge/15"
+              loading={busy === "Switching network"}
+              onClick={() => {
+                setBusy("Switching network");
+                setError(null);
+                ensureChain()
+                  .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                  .finally(() => setBusy(null));
+              }}
+            >
+              Switch to {targetChain.name}
+            </Button>
+          </div>
+        )}
         {error && (
           <p className="mx-auto mt-2 max-w-6xl rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-center text-xs text-destructive-foreground">
             {error}

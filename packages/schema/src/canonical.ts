@@ -1,5 +1,15 @@
-import canonicalize from "canonicalize";
+import canonicalizeExport from "canonicalize";
 import { keccak256, stringToBytes } from "viem";
+
+type Canonicalize = (input: unknown) => string | undefined;
+
+// canonicalize is CJS (`module.exports = fn`) but ships an ESM-shaped `.d.ts`.
+// Under NodeNext the default import therefore lands on the namespace object,
+// while bundlers hand back the function itself. Accept both.
+const canonicalize: Canonicalize =
+  typeof canonicalizeExport === "function"
+    ? (canonicalizeExport as Canonicalize)
+    : ((canonicalizeExport as { default: Canonicalize }).default);
 
 /** RFC 8785 JCS canonical JSON. Throws if canonicalize returns undefined. */
 export function canonicalJson(value: unknown): string {

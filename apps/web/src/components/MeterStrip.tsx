@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { formatEther, parseEther } from "viem";
 import { useWallet } from "@/wallet/WalletProvider";
 import { api } from "@/lib/api";
+import { waitForReceipt } from "@/lib/receipt";
 import { VERIFICATION_METER_ABI } from "@/lib/abi";
 import { targetChain } from "@/lib/chains";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,7 @@ export function MeterStrip({
         value: price > 0n ? price * 20n : parseEther("0.002"),
         chain: targetChain,
       });
-      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
+      if (publicClient) await waitForReceipt(publicClient, hash);
       refresh();
     } catch (err) {
       onError?.(err instanceof Error ? err.message : String(err));

@@ -73,7 +73,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     () =>
       createPublicClient({
         chain: targetChain,
-        transport: http(targetChain.rpcUrls.default.http[0] ?? "https://evmrpc-testnet.0g.ai"),
+        transport: http(targetChain.rpcUrls.default.http[0] ?? "https://evmrpc-testnet.0g.ai", {
+          timeout: 30_000,
+          retryCount: 5,
+          retryDelay: 1_200,
+        }),
       }),
     [],
   );

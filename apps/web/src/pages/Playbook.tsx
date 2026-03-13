@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { parseEther } from "viem";
 import { useWallet } from "@/wallet/WalletProvider";
 import { api, short } from "@/lib/api";
+import { waitForReceipt } from "@/lib/receipt";
 import { DEMO_VAULT_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
 import { targetChain } from "@/lib/chains";
 import { PresentCertificate } from "@/components/PresentCertificate";
@@ -103,7 +104,7 @@ export function Playbook() {
         ],
         chain: targetChain,
       });
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await waitForReceipt(publicClient, hash);
       if (receipt.status !== "success") throw new Error("registerIntent reverted.");
       setRegisterTx(hash);
     });
@@ -145,7 +146,7 @@ export function Playbook() {
         value: BigInt(step2.vault.call.valueWei || "0"),
         chain: targetChain,
       });
-      await publicClient.waitForTransactionReceipt({ hash });
+      await waitForReceipt(publicClient, hash);
       setSettleTx(hash);
     });
 

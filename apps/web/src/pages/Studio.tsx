@@ -6,6 +6,7 @@ import { BaseError, formatEther, parseEther } from "viem";
 import { useWallet } from "@/wallet/WalletProvider";
 import { isRequestAlreadyPending, isUserRejected } from "@/wallet/eip1193";
 import { api, short } from "@/lib/api";
+import { waitForReceipt } from "@/lib/receipt";
 import { DEMO_VAULT_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
 import { targetChain } from "@/lib/chains";
 import { ConstraintChips } from "@/components/ConstraintChips";
@@ -200,7 +201,7 @@ export function Studio() {
         ],
         chain: targetChain,
       });
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await waitForReceipt(publicClient, hash);
       if (receipt.status !== "success") throw new Error("registerIntent reverted on-chain.");
       setRegisterTx(hash);
       setStage("agent");
@@ -222,7 +223,7 @@ export function Studio() {
     });
 
   const onVerify = () =>
-    run("Verifying on 0G (Compute + Storage + attest)", async () => {
+    run("Verifying on 0G (Compute + Storage + attest — up to ~3 min)", async () => {
       if (!envelope || !action) throw new Error("Need a compiled intent and an agent proposal.");
       let amountWei = "0";
       try {
@@ -269,7 +270,7 @@ export function Studio() {
           value: BigInt(verify.vault.call.valueWei || "0"),
           chain: targetChain,
         });
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        const receipt = await waitForReceipt(publicClient, hash);
         setSettleTx(hash);
         if (receipt.status !== "success") {
           let decoded = "DemoVault.deposit reverted on-chain.";
@@ -739,7 +740,8 @@ function VerifyStep({
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">Bind amount and verify</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
           This 0G amount is hashed into the attestation. Changing it later makes deposit revert. Verify calls 0G
-          Compute, uploads evidence to Storage, then the oracle attests on-chain — often 30–90s.
+          Compute, uploads evidence to Storage, then the oracle attests on-chain. Galileo RPC can take up to ~3
+          minutes to index those receipts.
         </p>
       </div>
       {action && (

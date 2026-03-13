@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { parseEther } from "viem";
 import { useWallet } from "@/wallet/WalletProvider";
 import { api, short } from "@/lib/api";
+import { waitForReceipt } from "@/lib/receipt";
 import { INTENT_REGISTRY_ABI } from "@/lib/abi";
 import { targetChain } from "@/lib/chains";
 import { VerdictStamp } from "@/components/VerdictStamp";
@@ -101,7 +102,7 @@ export function Market() {
         ],
         chain: targetChain,
       });
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await waitForReceipt(publicClient, hash);
       if (receipt.status !== "success") throw new Error("registerIntent reverted.");
       setRegisterTx(hash);
     });

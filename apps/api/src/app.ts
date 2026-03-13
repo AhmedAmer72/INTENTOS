@@ -52,7 +52,8 @@ function failClosed(reply: FastifyReply, err: unknown) {
     const status = typeof err.status === "number" ? err.status : 503;
     return reply.code(status).send({ error: err.message, code: err.code });
   }
-  const message = err instanceof Error ? err.message : String(err);
+  const raw = err instanceof Error ? err.message : String(err);
+  const message = raw.replace(/\s*Version: viem@[\d.]+\s*/g, "").trim();
   return reply.code(500).send({ error: message, code: "internal" });
 }
 

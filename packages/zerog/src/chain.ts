@@ -4,6 +4,9 @@ import {
   http,
   type Hex,
   type Account,
+  type Hash,
+  type PublicClient,
+  type TransactionReceipt,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -197,8 +200,31 @@ export function publicClient(network: ZeroGNetworkName, rpcUrl?: string) {
   const chain = viemChain(network);
   return createPublicClient({
     chain,
-    transport: http(rpcUrl ?? net.rpc),
+    transport: http(rpcUrl ?? net.rpc, { timeout: 30_000, retryCount: 5, retryDelay: 1_200 }),
   });
+}
+
+/** Galileo RPCs often lag getTransactionReceipt after writeContract. Poll instead of failing once. */
+export async function waitForReceipt(
+  client: PublicClient,
+  hash: Hash,
+  opts?: { timeoutMs?: number; intervalMs?: number },
+): Promise<TransactionReceipt> {
+  const timeoutMs = opts?.timeoutMs ?? 180_000;
+  const intervalMs = opts?.intervalMs ?? 2_000;
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const receipt = await client.getTransactionReceipt({ hash });
+      if (receipt) return receipt;
+    } catch {
+      /* not indexed yet */
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  throw new Error(
+    `0G RPC has not indexed ${hash} yet. Open the explorer, wait for the block, then retry verify.`,
+  );
 }
 
 export function walletFromKey(privateKey: Hex, network: ZeroGNetworkName, rpcUrl?: string) {
@@ -208,7 +234,7 @@ export function walletFromKey(privateKey: Hex, network: ZeroGNetworkName, rpcUrl
   const wallet = createWalletClient({
     account,
     chain,
-    transport: http(rpcUrl ?? net.rpc),
+    transport: http(rpcUrl ?? net.rpc, { timeout: 30_000, retryCount: 5, retryDelay: 1_200 }),
   });
   return { account, wallet, chain, chainId: net.chainId };
 }

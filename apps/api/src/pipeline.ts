@@ -17,6 +17,7 @@ import {
   publicClient,
   signVerificationAttestation,
   uploadJson,
+  waitForReceipt,
   walletFromKey,
   type RouterConfig,
 } from "@intentos/zerog";
@@ -97,7 +98,7 @@ export async function recordAttestation(args: {
     chain,
     account,
   });
-  const receipt = await client.waitForTransactionReceipt({ hash });
+  const receipt = await waitForReceipt(client, hash);
   if (receipt.status !== "success") {
     throw new FailClosedError(
       "attest_reverted",
@@ -216,7 +217,7 @@ async function debitMeter(payer: `0x${string}`, intentId: `0x${string}`) {
     chain,
     account,
   });
-  const receipt = await client.waitForTransactionReceipt({ hash });
+  const receipt = await waitForReceipt(client, hash);
   if (receipt.status !== "success") {
     throw new FailClosedError("meter_debit_failed", `VerificationMeter.debit reverted (${hash})`, 502);
   }

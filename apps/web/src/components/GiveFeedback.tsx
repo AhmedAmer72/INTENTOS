@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BaseError } from "viem";
 import { useWallet } from "@/wallet/WalletProvider";
 import { api } from "@/lib/api";
+import { waitForReceipt } from "@/lib/receipt";
 import { ERC8004_IDENTITY_ABI, ERC8004_REPUTATION_ABI } from "@/lib/abi";
 import { targetChain } from "@/lib/chains";
 import { Button } from "@/components/ui/button";
@@ -89,7 +90,7 @@ export function GiveFeedback({
         ],
         chain: targetChain,
       });
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await waitForReceipt(publicClient, hash);
       setTx(hash);
       if (receipt.status !== "success") throw new Error("giveFeedback reverted on-chain.");
       await api("/reputation", {

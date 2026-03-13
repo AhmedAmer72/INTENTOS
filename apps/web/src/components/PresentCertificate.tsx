@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BaseError } from "viem";
 import { useWallet } from "@/wallet/WalletProvider";
 import { CERTIFICATE_CONSUMER_ABI } from "@/lib/abi";
+import { waitForReceipt } from "@/lib/receipt";
 import { targetChain } from "@/lib/chains";
 import { Button } from "@/components/ui/button";
 import { short } from "@/lib/api";
@@ -44,7 +45,7 @@ export function PresentCertificate({
         args: [intentId as `0x${string}`, actionHash as `0x${string}`],
         chain: targetChain,
       });
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await waitForReceipt(publicClient, hash);
       setTx(hash);
       if (receipt.status !== "success") {
         throw new Error("CertificateConsumer.accept reverted on-chain.");

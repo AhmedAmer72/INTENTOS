@@ -81,8 +81,8 @@ export function Landing() {
         figure={
           <TiltedTiles
             images={INTENT_TILES}
-            columns={14}
-            tilesPerColumn={5}
+            columns={7}
+            tilesPerColumn={3}
             tileAspect={1}
             rowGap={10}
             columnGap={10}
@@ -91,15 +91,14 @@ export function Landing() {
             rotateY={14}
             rotateZ={-18}
             offsetX={-24}
-            planeWidth={260}
-            planeHeight={270}
+            planeWidth={200}
+            planeHeight={210}
             stagger={18}
-            duration={28}
+            duration={40}
             fadeTop={16}
             fadeBottom={14}
-            parallax
-            parallaxStrength={6}
-            saturation={1.08}
+            parallax={false}
+            saturation={1}
             width="100%"
             height="100%"
           />

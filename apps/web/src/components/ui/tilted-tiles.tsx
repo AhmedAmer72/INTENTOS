@@ -3,7 +3,7 @@
  * Official install needs REACTBITS_LICENSE_KEY in apps/web/.env.local, then:
  *   npx shadcn@latest add @reactbits-starter/tilted-tiles-tw
  */
-import { useCallback, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -77,37 +77,85 @@ export function TiltedTiles({
   className,
 }: TiltedTilesProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [steer, setSteer] = useState({ x: 0, y: 0 });
-  const [paused, setPaused] = useState(false);
+  const planeRef = useRef<HTMLDivElement>(null);
   const sources = images.length ? images : FALLBACK_IMAGES;
+  const [inView, setInView] = useState(true);
+  const [compact, setCompact] = useState(false);
+  const [paused, setPaused] = useState(false);
 
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        setInView(entry.isIntersecting && entry.intersectionRatio > 0.04);
+      },
+      { threshold: [0, 0.04, 0.2] },
+    );
+    io.observe(wrap);
+
+    const compactMq = window.matchMedia("(max-width: 768px)");
+    const motionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setCompact(compactMq.matches || motionMq.matches);
+    sync();
+    compactMq.addEventListener("change", sync);
+    motionMq.addEventListener("change", sync);
+
+    const onVis = () => {
+      if (document.hidden) setInView(false);
+    };
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      io.disconnect();
+      compactMq.removeEventListener("change", sync);
+      motionMq.removeEventListener("change", sync);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!parallax || compact) return;
+    const wrap = wrapRef.current;
+    const plane = planeRef.current;
+    if (!wrap || !plane) return;
+
+    let raf = 0;
+    const onMove = (event: MouseEvent) => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const rect = wrap.getBoundingClientRect();
+        const nx = ((event.clientX - rect.left) / Math.max(rect.width, 1) - 0.5) * 2;
+        const ny = ((event.clientY - rect.top) / Math.max(rect.height, 1) - 0.5) * 2;
+        plane.style.setProperty("--steer-x", `${(-ny * parallaxStrength).toFixed(2)}deg`);
+        plane.style.setProperty("--steer-y", `${(nx * parallaxStrength).toFixed(2)}deg`);
+      });
+    };
+    const reset = () => {
+      plane.style.setProperty("--steer-x", "0deg");
+      plane.style.setProperty("--steer-y", "0deg");
+    };
+
+    wrap.addEventListener("mousemove", onMove, { passive: true });
+    wrap.addEventListener("mouseleave", reset);
+    return () => {
+      cancelAnimationFrame(raf);
+      wrap.removeEventListener("mousemove", onMove);
+      wrap.removeEventListener("mouseleave", reset);
+    };
+  }, [compact, parallax, parallaxStrength]);
+
+  const colCount = compact ? Math.min(columns, 4) : columns;
+  const loop = inView && !compact && !paused;
   const cols = useMemo(() => {
-    return Array.from({ length: Math.max(1, columns) }, (_, col) => {
+    return Array.from({ length: Math.max(1, colCount) }, (_, col) => {
       const tiles = Array.from({ length: Math.max(1, tilesPerColumn) }, (_, row) => {
         return sources[(col * tilesPerColumn + row) % sources.length];
       });
-      return [...tiles, ...tiles];
+      return loop ? [...tiles, ...tiles] : tiles;
     });
-  }, [columns, sources, tilesPerColumn]);
-
-  const onMove = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      if (!parallax || !wrapRef.current) return;
-      const rect = wrapRef.current.getBoundingClientRect();
-      const nx = ((event.clientX - rect.left) / Math.max(rect.width, 1) - 0.5) * 2;
-      const ny = ((event.clientY - rect.top) / Math.max(rect.height, 1) - 0.5) * 2;
-      setSteer({
-        x: -ny * parallaxStrength,
-        y: nx * parallaxStrength,
-      });
-    },
-    [parallax, parallaxStrength],
-  );
-
-  const reset = useCallback(() => {
-    setSteer({ x: 0, y: 0 });
-    setPaused(false);
-  }, []);
+  }, [colCount, loop, sources, tilesPerColumn]);
 
   const mask = `linear-gradient(to bottom, transparent 0%, #000 ${fadeTop}%, #000 ${100 - fadeBottom}%, transparent 100%)`;
 
@@ -120,22 +168,25 @@ export function TiltedTiles({
         height: size(height),
         perspective: `${perspective}px`,
         perspectiveOrigin: "50% 40%",
+        contain: "layout paint",
       }}
-      onMouseMove={onMove}
-      onMouseLeave={reset}
       onMouseEnter={() => {
         if (pauseOnHover) setPaused(true);
+      }}
+      onMouseLeave={() => {
+        if (pauseOnHover) setPaused(false);
       }}
       aria-hidden="true"
     >
       <div
-        className="absolute left-1/2 top-1/2 flex will-change-transform"
+        ref={planeRef}
+        className="absolute left-1/2 top-1/2 flex"
         style={{
           width: `${planeWidth}%`,
           height: `${planeHeight}%`,
           gap: columnGap,
-          filter: `saturate(${saturation})`,
-          transform: `translate(-50%, -50%) translate3d(${offsetX}px, ${offsetY}px, ${offsetZ}px) rotateX(${rotateX + steer.x}deg) rotateY(${rotateY + steer.y}deg) rotateZ(${rotateZ}deg)`,
+          filter: saturation === 1 ? undefined : `saturate(${saturation})`,
+          transform: `translate(-50%, -50%) translate3d(${offsetX}px, ${offsetY}px, ${offsetZ}px) rotateX(calc(${rotateX}deg + var(--steer-x, 0deg))) rotateY(calc(${rotateY}deg + var(--steer-y, 0deg))) rotateZ(${rotateZ}deg)`,
           transformStyle: "preserve-3d",
           WebkitMaskImage: mask,
           maskImage: mask,
@@ -150,14 +201,13 @@ export function TiltedTiles({
               style={{ transform: reverse ? `translateY(${stagger}px)` : undefined }}
             >
               <div
-                className="flex flex-col"
+                className="tilted-tiles-col flex flex-col"
                 style={{
                   gap: rowGap,
-                  animationName: reverse ? "tilted-tiles-down" : "tilted-tiles-up",
+                  animationName: loop ? (reverse ? "tilted-tiles-down" : "tilted-tiles-up") : "none",
                   animationDuration: `${duration}s`,
                   animationTimingFunction: "linear",
                   animationIterationCount: "infinite",
-                  animationPlayState: paused ? "paused" : "running",
                 }}
               >
                 {tiles.map((src, row) => (
@@ -168,10 +218,11 @@ export function TiltedTiles({
                       aspectRatio: String(tileAspect),
                       borderRadius,
                       flex: "0 0 auto",
+                      backgroundImage: `url("${src}")`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
                     }}
-                  >
-                    <img src={src} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover" />
-                  </div>
+                  />
                 ))}
               </div>
             </div>

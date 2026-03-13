@@ -153,6 +153,17 @@ body {
   background: rgba(192, 105, 255, 0.08);
 }
 
+.tilted-tiles-col {
+  will-change: transform;
+}
+
+@media (max-width: 768px), (prefers-reduced-motion: reduce) {
+  .tilted-tiles-col {
+    animation: none !important;
+    will-change: auto;
+  }
+}
+
 @keyframes tilted-tiles-up {
   from {
     transform: translate3d(0, 0, 0);

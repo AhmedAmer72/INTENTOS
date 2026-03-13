@@ -502,73 +502,20 @@ export function FoxyHero({
           }}
         >
           <div
-            className="absolute"
+            className="pointer-events-none absolute"
             style={{
               left: "50%",
               transform: "translateX(-50%)",
               top: "-56px",
               width: "836px",
+              height: "220px",
+              background:
+                "radial-gradient(ellipse at 50% 40%, rgba(192, 105, 255, 0.42) 0%, rgba(155, 79, 224, 0.18) 42%, transparent 72%)",
             }}
-          >
-            <div
-              className="absolute"
-              style={{
-                width: "980px",
-                height: "520px",
-                left: "-72px",
-                top: "40px",
-                background: "radial-gradient(ellipse at center, rgba(155, 79, 224, 0.62) 0%, rgba(122, 50, 200, 0.32) 46%, rgba(12, 4, 20, 0) 74%)",
-                filter: "blur(28px)",
-              }}
-            />
-            <motion.div
-              className="absolute"
-              style={{
-                width: "828px",
-                height: "76px",
-                left: "4px",
-                top: "0px",
-                background: "rgba(192, 105, 255, 0.7)",
-                mixBlendMode: "plus-lighter",
-                filter: "blur(70px)",
-                borderRadius: "50%",
-              }}
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <motion.div
-              className="absolute"
-              style={{
-                width: "794px",
-                height: "76px",
-                left: "14px",
-                top: "56px",
-                background: "rgba(155, 79, 224, 0.65)",
-                mixBlendMode: "plus-lighter",
-                filter: "blur(70px)",
-                borderRadius: "50%",
-              }}
-              animate={{ opacity: [0.6, 1, 0.6] }}
-              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-            />
-            <motion.div
-              className="absolute"
-              style={{
-                width: "812px",
-                height: "28px",
-                left: "0px",
-                top: "56px",
-                background: "#A855F7",
-                filter: "blur(20px)",
-                borderRadius: "50%",
-              }}
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            />
-          </div>
+          />
 
-          {horizontalStars.map((star, index) => (
-            <motion.div
+          {horizontalStars.slice(0, 6).map((star, index) => (
+            <div
               key={`star-h-${star.id}`}
               className="absolute hidden md:block"
               style={{
@@ -577,34 +524,25 @@ export function FoxyHero({
                 left: `${star.left - 400}px`,
                 top: `${star.top - 480}px`,
                 background:
-                  index >= 6
+                  index >= 3
                     ? "linear-gradient(180deg, #C069FF 0%, rgba(192, 105, 255, 0) 100%)"
                     : "linear-gradient(180deg, rgba(192, 105, 255, 0.5) 0%, rgba(192, 105, 255, 0) 100%)",
                 transform: "rotate(-90deg)",
                 borderRadius: "50%",
-                boxShadow: "0 0 4px rgba(192, 105, 255, 0.8)",
-              }}
-              animate={{ opacity: [0.3, 1, 0.3], scale: [1, 2.5, 1] }}
-              transition={{
-                duration: 2 + (index % 3),
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: (index % 5) * 0.3,
+                opacity: 0.55,
               }}
             />
           ))}
 
           <div
-            className="absolute"
+            className="pointer-events-none absolute"
             style={{
-              width: "688px",
-              height: "73.79px",
+              width: "520px",
+              height: "80px",
               left: "50%",
               transform: "translateX(-50%)",
-              bottom: "-20px",
-              background: "#8F53D0",
-              filter: "blur(80px)",
-              borderRadius: "50%",
+              bottom: "-12px",
+              background: "radial-gradient(ellipse at center, rgba(143, 83, 208, 0.45) 0%, transparent 72%)",
             }}
           />
 

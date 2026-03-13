@@ -10,3 +10,11 @@ packages/contracts/cache
 packages/contracts/artifacts
 packages/contracts/typechain-types
 node_modules
+
+# Vite writes here during `vercel build`. Do not ignore it or the
+# upload step reports "No Output Directory named dist".
+!dist
+!dist/**
+!apps/web/dist
+!apps/web/dist/**
+

@@ -15,15 +15,17 @@ SQLite (`file:./prisma/prod.db`) is ephemeral on the free plan. Redeploys reset 
 ## 2. Vercel (web)
 
 1. [vercel.com](https://vercel.com) → Add New → Project → this repo.
-2. Leave the root at the monorepo root. `vercel.json` already sets install / build / `apps/web/dist`.
-3. Environment variables (Production + Preview):
+2. **Root Directory:** leave empty (repository root). Do not set it to `apps/web` unless you want `apps/web/vercel.json` to drive the build.
+3. **Framework Preset:** Other / leave unset. `vercel.json` sets `"framework": null` so Vercel does not look for a root `dist`.
+4. **Output Directory:** leave empty so `vercel.json` can set `apps/web/dist`. A dashboard value of `dist` is what produced “No Output Directory named dist”.
+5. Environment variables (Production + Preview):
 
 | Name | Value |
 | --- | --- |
 | `VITE_API_URL` | Render origin from step 1 |
 | `VITE_CHAIN_ID` | `16602` (Galileo) |
 
-4. Deploy. Client routes (`/studio`, `/market`, `/console`, `/proof/:hash`) rewrite to `index.html`.
+6. Deploy. Client routes (`/studio`, `/market`, `/console`, `/proof/:hash`) rewrite to `index.html`.
 
 ## 3. CORS
 

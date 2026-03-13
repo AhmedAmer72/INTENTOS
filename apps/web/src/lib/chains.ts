@@ -14,6 +14,7 @@ export const aristotle = defineChain({
   nativeCurrency: { name: "0G", symbol: "0G", decimals: 18 },
   rpcUrls: { default: { http: ["https://evmrpc.0g.ai"] } },
   blockExplorers: { default: { name: "Chainscan", url: "https://chainscan.0g.ai" } },
+  fees: { defaultPriorityFee: 2_000_000_000n },
 });
 
 export const TARGET_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID ?? 16661);

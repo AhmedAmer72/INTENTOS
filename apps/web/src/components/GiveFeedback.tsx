@@ -4,7 +4,7 @@ import { useWallet } from "@/wallet/WalletProvider";
 import { api } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
 import { ERC8004_IDENTITY_ABI, ERC8004_REPUTATION_ABI } from "@/lib/abi";
-import { targetChain } from "@/lib/chains";
+import { writeTargetContract } from "@/lib/tx";
 import { Button } from "@/components/ui/button";
 import { short } from "@/lib/api";
 
@@ -73,7 +73,7 @@ export function GiveFeedback({
     setErr(null);
     try {
       await ensureChain();
-      const hash = await client.writeContract({
+      const hash = await writeTargetContract(client, publicClient, {
         account: address,
         address: reputationRegistry,
         abi: ERC8004_REPUTATION_ABI,
@@ -88,7 +88,6 @@ export function GiveFeedback({
           `/proof/${actionHash}`,
           evidenceHash as `0x${string}`,
         ],
-        chain: targetChain,
       });
       const receipt = await waitForReceipt(publicClient, hash);
       setTx(hash);

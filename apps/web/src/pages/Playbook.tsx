@@ -5,6 +5,7 @@ import { api, short } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
 import { DEMO_VAULT_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
 import { targetChain, targetShortName } from "@/lib/chains";
+import { writeTargetContract } from "@/lib/tx";
 import { FailedRules, NextStepBanner } from "@/components/NextStep";
 import { PresentCertificate } from "@/components/PresentCertificate";
 import { VerdictStamp } from "@/components/VerdictStamp";
@@ -148,7 +149,7 @@ export function Playbook() {
           nonce: BigInt(message.nonce),
         },
       });
-      const hash = await client.writeContract({
+      const hash = await writeTargetContract(client, publicClient, {
         account: address,
         address: domain.verifyingContract,
         abi: INTENT_REGISTRY_ABI,
@@ -165,7 +166,6 @@ export function Playbook() {
           BigInt(message.nonce),
           sig,
         ],
-        chain: targetChain,
       });
       const receipt = await waitForReceipt(publicClient, hash);
       if (receipt.status !== "success") throw new Error("registerIntent reverted.");
@@ -200,14 +200,13 @@ export function Playbook() {
     run("Settling final step", async () => {
       if (!step2 || !client || !address || !step2.vault.address) throw new Error("Step 2 must APPROVE first.");
       await ensureChain();
-      const hash = await client.writeContract({
+      const hash = await writeTargetContract(client, publicClient, {
         account: address,
         address: step2.vault.address,
         abi: DEMO_VAULT_ABI,
         functionName: "deposit",
         args: [step2.vault.call.intentId, step2.vault.call.actionHash],
         value: BigInt(step2.vault.call.valueWei || "0"),
-        chain: targetChain,
       });
       await waitForReceipt(publicClient, hash);
       setSettleTx(hash);

@@ -4,7 +4,7 @@ import { isAddress } from "viem";
 import { api, short } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
 import { AGENTIC_ID_V2_ABI } from "@/lib/abi";
-import { targetChain } from "@/lib/chains";
+import { writeTargetContract } from "@/lib/tx";
 import { NextStepBanner } from "@/components/NextStep";
 import { StatusRail } from "@/components/StatusRail";
 import { Button } from "@/components/ui/button";
@@ -180,13 +180,12 @@ function AgenticV2Transfer({ meta }: { meta: Meta | null }) {
           to,
         }),
       });
-      const hash = await client.writeContract({
+      const hash = await writeTargetContract(client, publicClient, {
         account: address,
         address: meta.agenticIdV2!,
         abi: AGENTIC_ID_V2_ABI,
         functionName: "transfer",
         args: [address, to as `0x${string}`, BigInt(meta.agenticTokenV2!), "0x", proofOut.proof],
-        chain: targetChain,
       });
       const receipt = await waitForReceipt(publicClient, hash);
       if (receipt.status !== "success") throw new Error("Agentic ID v2 transfer reverted.");

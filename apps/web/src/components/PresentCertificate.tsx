@@ -3,7 +3,7 @@ import { BaseError } from "viem";
 import { useWallet } from "@/wallet/WalletProvider";
 import { CERTIFICATE_CONSUMER_ABI } from "@/lib/abi";
 import { waitForReceipt } from "@/lib/receipt";
-import { targetChain } from "@/lib/chains";
+import { writeTargetContract } from "@/lib/tx";
 import { Button } from "@/components/ui/button";
 import { short } from "@/lib/api";
 
@@ -37,13 +37,12 @@ export function PresentCertificate({
     setErr(null);
     try {
       await ensureChain();
-      const hash = await client.writeContract({
+      const hash = await writeTargetContract(client, publicClient, {
         account: address,
         address: consumer,
         abi: CERTIFICATE_CONSUMER_ABI,
         functionName: "accept",
         args: [intentId as `0x${string}`, actionHash as `0x${string}`],
-        chain: targetChain,
       });
       const receipt = await waitForReceipt(publicClient, hash);
       setTx(hash);

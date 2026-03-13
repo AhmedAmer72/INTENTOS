@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2Icon } from "lucide-react";
-import { BaseError, formatEther, parseEther } from "viem";
+import { formatEther, parseEther } from "viem";
 import { useWallet } from "@/wallet/WalletProvider";
 import { isRequestAlreadyPending, isUserRejected } from "@/wallet/eip1193";
 import { api, short } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
 import { DEMO_VAULT_ABI, INTENT_EXECUTOR_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
 import { targetChain, targetShortName } from "@/lib/chains";
+import { explainTxError, writeTargetContract } from "@/lib/tx";
 import { ConstraintChips } from "@/components/ConstraintChips";
 import { GiveFeedback } from "@/components/GiveFeedback";
 import { HashField } from "@/components/HashField";
@@ -36,7 +37,7 @@ const STEPS: { id: Stage; label: string }[] = [
 ];
 
 function vaultRevertMessage(err: unknown, verdict?: string): string {
-  const text = err instanceof BaseError ? `${err.shortMessage} ${err.message}` : String(err);
+  const text = explainTxError(err);
   if (/IntentNotApproved/i.test(text)) {
     if (verdict && verdict !== "APPROVE") {
       return "The vault refused this plan. That is correct while the stamp is REJECT or CHALLENGE. Press Replan, then Verify, until you see APPROVE.";
@@ -53,7 +54,7 @@ function vaultRevertMessage(err: unknown, verdict?: string): string {
 }
 
 function executorRevertMessage(err: unknown, verdict?: string): string {
-  const text = err instanceof BaseError ? `${err.shortMessage} ${err.message}` : String(err);
+  const text = explainTxError(err);
   if (/ChallengePending/i.test(text)) {
     return "IntentExecutor reverted ChallengePending. Wait for the challenge delay (default 15 minutes).";
   }
@@ -207,7 +208,7 @@ export function Studio() {
           nonce: BigInt(message.nonce),
         },
       });
-      const hash = await client.writeContract({
+      const hash = await writeTargetContract(client, publicClient, {
         account: address,
         address: domain.verifyingContract,
         abi: INTENT_REGISTRY_ABI,
@@ -224,7 +225,6 @@ export function Studio() {
           BigInt(message.nonce),
           sig,
         ],
-        chain: targetChain,
       });
       const receipt = await waitForReceipt(publicClient, hash);
       if (receipt.status !== "success") throw new Error("registerIntent reverted on-chain.");
@@ -287,14 +287,13 @@ export function Studio() {
       }
       await ensureChain();
       try {
-        const hash = await client.writeContract({
+        const hash = await writeTargetContract(client, publicClient, {
           account: address,
           address: verify.vault.address,
           abi: DEMO_VAULT_ABI,
           functionName: "deposit",
           args: [verify.vault.call.intentId, verify.vault.call.actionHash],
           value: BigInt(verify.vault.call.valueWei || "0"),
-          chain: targetChain,
         });
         const receipt = await waitForReceipt(publicClient, hash);
         setSettleTx(hash);
@@ -334,7 +333,7 @@ export function Studio() {
       }
       await ensureChain();
       try {
-        const hash = await client.writeContract({
+        const hash = await writeTargetContract(client, publicClient, {
           account: address,
           address: verify.executor.address,
           abi: INTENT_EXECUTOR_ABI,
@@ -346,7 +345,6 @@ export function Studio() {
             verify.executor.call.data,
           ],
           value: BigInt(verify.executor.call.valueWei || "0"),
-          chain: targetChain,
         });
         const receipt = await waitForReceipt(publicClient, hash);
         setSettleTx(hash);

@@ -6,6 +6,7 @@ import { api, short } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
 import { INTENT_BOUNTY_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
 import { targetChain, targetShortName } from "@/lib/chains";
+import { writeTargetContract } from "@/lib/tx";
 import { VerdictStamp } from "@/components/VerdictStamp";
 import { GiveFeedback } from "@/components/GiveFeedback";
 import { FailedRules, NextStepBanner } from "@/components/NextStep";
@@ -194,7 +195,7 @@ export function Market() {
           nonce: BigInt(message.nonce),
         },
       });
-      const hash = await client.writeContract({
+      const hash = await writeTargetContract(client, publicClient, {
         account: address,
         address: domain.verifyingContract,
         abi: INTENT_REGISTRY_ABI,
@@ -211,7 +212,6 @@ export function Market() {
           BigInt(message.nonce),
           sig,
         ],
-        chain: targetChain,
       });
       const receipt = await waitForReceipt(publicClient, hash);
       if (receipt.status !== "success") throw new Error("registerIntent reverted.");
@@ -252,14 +252,13 @@ export function Market() {
         throw new Error("Verify first and set INTENT_BOUNTY_ADDRESS.");
       }
       await ensureChain();
-      const hash = await client.writeContract({
+      const hash = await writeTargetContract(client, publicClient, {
         account: address,
         address: meta.bounty,
         abi: INTENT_BOUNTY_ABI,
         functionName: "fund",
         args: [verify.vault.call.intentId, verify.vault.call.actionHash],
         value: parseEther("0.0001"),
-        chain: targetChain,
       });
       const receipt = await waitForReceipt(publicClient, hash);
       if (receipt.status !== "success") throw new Error("IntentBounty.fund reverted.");
@@ -272,13 +271,12 @@ export function Market() {
         throw new Error("Fund after APPROVE, then claim.");
       }
       await ensureChain();
-      const hash = await client.writeContract({
+      const hash = await writeTargetContract(client, publicClient, {
         account: address,
         address: meta.bounty,
         abi: INTENT_BOUNTY_ABI,
         functionName: "claim",
         args: [verify.vault.call.intentId, verify.vault.call.actionHash, address],
-        chain: targetChain,
       });
       const receipt = await waitForReceipt(publicClient, hash);
       if (receipt.status !== "success") throw new Error("IntentBounty.claim reverted. Need APPROVE.");

@@ -4,7 +4,7 @@ import { useWallet } from "@/wallet/WalletProvider";
 import { api } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
 import { VERIFICATION_METER_ABI } from "@/lib/abi";
-import { targetChain } from "@/lib/chains";
+import { explainTxError, writeTargetContract } from "@/lib/tx";
 import { Button } from "@/components/ui/button";
 import type { MeterInfo } from "@/lib/types";
 
@@ -52,18 +52,17 @@ export function MeterStrip({
     onBusy?.("Depositing meter credits");
     try {
       await ensureChain();
-      const hash = await client.writeContract({
+      const hash = await writeTargetContract(client, publicClient, {
         account: address,
         address: meter.address,
         abi: VERIFICATION_METER_ABI,
         functionName: "deposit",
         value: price > 0n ? price * 20n : parseEther("0.002"),
-        chain: targetChain,
       });
-      if (publicClient) await waitForReceipt(publicClient, hash);
+      await waitForReceipt(publicClient, hash);
       refresh();
     } catch (err) {
-      onError?.(err instanceof Error ? err.message : String(err));
+      onError?.(explainTxError(err));
     } finally {
       onBusy?.(null);
     }

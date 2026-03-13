@@ -153,8 +153,16 @@ body {
   background: rgba(192, 105, 255, 0.08);
 }
 
+.hero-atmosphere {
+  background:
+    radial-gradient(58% 52% at 38% -8%, rgba(50, 0, 86, 0.72), transparent 62%),
+    radial-gradient(32% 42% at 68% 6%, rgba(192, 105, 255, 0.34), transparent 58%),
+    linear-gradient(180deg, #c069ff 0%, rgba(192, 105, 255, 0) 42%) left 62% top -8% / 140px 340px no-repeat;
+}
+
 .tilted-tiles-col {
   will-change: transform;
+  backface-visibility: hidden;
 }
 
 @media (max-width: 768px), (prefers-reduced-motion: reduce) {

@@ -58,21 +58,6 @@ export function FoxyHero({
   children,
 }: FoxyHeroProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const starLeft = [966, 959, 998, 1006, 1018, 953, 941, 901, 841, 864, 908, 926, 957];
-  const starTop = [17, 49, 105, 61, 149, 168, 223, 250, 208, 153, 151, 93, 86];
-  const starParticles = Array.from({ length: 13 }, (_, i) => ({
-    id: i,
-    left: starLeft[i] ?? 0,
-    top: starTop[i] ?? 0,
-  }));
-
-  const hLeft = [473, 527, 623, 548, 699, 731, 826, 872, 800, 706, 702, 603, 591];
-  const hTop = [544, 551, 512, 504, 492, 557, 569, 609, 669, 646, 602, 584, 553];
-  const horizontalStars = Array.from({ length: 13 }, (_, i) => ({
-    id: i,
-    left: hLeft[i] ?? 0,
-    top: hTop[i] ?? 0,
-  }));
 
   return (
     <section
@@ -84,135 +69,7 @@ export function FoxyHero({
       role="banner"
       aria-label="Hero section"
     >
-      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-        <svg width="100%" height="100%" style={{ position: "absolute", top: 0, left: 0 }}>
-          <rect width="100%" height="100%" fill="none" stroke="rgba(255, 255, 255, 0.05)" strokeWidth="1.4155" />
-        </svg>
-      </div>
-
-      <motion.div
-        className="absolute"
-        style={{
-          width: "1151px",
-          height: "1024px",
-          left: "119px",
-          top: "0px",
-          background: "rgba(50, 0, 86, 0.6)",
-          filter: "blur(250px)",
-          borderRadius: "50%",
-        }}
-        animate={{ opacity: [0.4, 0.7, 0.4], scale: [1, 1.1, 1] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      <div
-        className="absolute"
-        style={{
-          width: "451.95px",
-          height: "476.87px",
-          left: "min(754px, 55vw)",
-          top: "-132px",
-        }}
-      >
-        <motion.div
-          className="absolute"
-          style={{
-            width: "204px",
-            height: "348.5px",
-            left: "46px",
-            top: "47px",
-            background: "linear-gradient(180deg, #C069FF 0%, rgba(192, 105, 255, 0) 100%)",
-            mixBlendMode: "plus-lighter",
-            filter: "blur(10.5px)",
-            transform: "rotate(13.39deg)",
-          }}
-          animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.05, 1] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute"
-          style={{
-            width: "204px",
-            height: "348.5px",
-            left: "137.95px",
-            top: "62.98px",
-            background: "linear-gradient(180deg, #C069FF 0%, rgba(192, 105, 255, 0) 100%)",
-            mixBlendMode: "plus-lighter",
-            filter: "blur(10.5px)",
-            transform: "rotate(13.33deg)",
-          }}
-          animate={{ opacity: [0.6, 1, 0.6], scale: [1, 1.05, 1] }}
-          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-        />
-        <motion.div
-          className="absolute"
-          style={{
-            width: "204px",
-            height: "348.5px",
-            left: "122px",
-            top: "86px",
-            background: "linear-gradient(180deg, #C069FF 0%, rgba(192, 105, 255, 0) 100%)",
-            mixBlendMode: "plus-lighter",
-            filter: "blur(10.5px)",
-            transform: "rotate(6.01deg)",
-          }}
-          animate={{ opacity: [0.7, 1, 0.7], scale: [1, 1.05, 1] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        />
-        <motion.div
-          className="absolute"
-          style={{
-            width: "264.72px",
-            height: "397.88px",
-            left: "0px",
-            top: "0px",
-            background: "rgba(192, 105, 255, 0.5)",
-            filter: "blur(125px)",
-            transform: "rotate(37.4deg)",
-            borderRadius: "50%",
-          }}
-          animate={{ opacity: [0.5, 0.8, 0.5], scale: [1, 1.2, 1] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <div
-          className="absolute"
-          style={{
-            width: "100px",
-            height: "100px",
-            left: "175px",
-            top: "206px",
-            background: "#D9D9D9",
-            filter: "blur(75px)",
-            borderRadius: "50%",
-          }}
-        />
-      </div>
-
-      {starParticles.map((star, index) => (
-        <motion.div
-          key={`star-v-${star.id}`}
-          className="absolute hidden lg:block"
-          style={{
-            width: "2px",
-            height: "2px",
-            left: `${star.left}px`,
-            top: `${star.top}px`,
-            background:
-              index >= 6
-                ? "linear-gradient(180deg, #C069FF 0%, rgba(192, 105, 255, 0) 100%)"
-                : "linear-gradient(180deg, rgba(192, 105, 255, 0.5) 0%, rgba(192, 105, 255, 0) 100%)",
-            borderRadius: "50%",
-            boxShadow: "0 0 4px rgba(192, 105, 255, 0.8)",
-          }}
-          animate={{ opacity: [0.3, 1, 0.3], scale: [1, 2, 1] }}
-          transition={{
-            duration: 2 + (index % 3),
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: (index % 5) * 0.35,
-          }}
-        />
-      ))}
+      <div className="hero-atmosphere pointer-events-none absolute inset-0" aria-hidden="true" />
 
       <motion.header
         initial={{ opacity: 0, y: -20 }}
@@ -227,7 +84,6 @@ export function FoxyHero({
           background: "rgba(8, 2, 14, 0.45)",
           border: "1px solid rgba(192, 105, 255, 0.22)",
           boxShadow: "0 0 0 1px rgba(192,105,255,0.06), 0 16px 40px rgba(0,0,0,0.35), 0 0 32px rgba(192,105,255,0.12)",
-          backdropFilter: "blur(22px)",
         }}
       >
         <div className="flex flex-row items-center justify-center" style={{ gap: "7px" }}>
@@ -513,26 +369,6 @@ export function FoxyHero({
                 "radial-gradient(ellipse at 50% 40%, rgba(192, 105, 255, 0.42) 0%, rgba(155, 79, 224, 0.18) 42%, transparent 72%)",
             }}
           />
-
-          {horizontalStars.slice(0, 6).map((star, index) => (
-            <div
-              key={`star-h-${star.id}`}
-              className="absolute hidden md:block"
-              style={{
-                width: "2px",
-                height: "3.43px",
-                left: `${star.left - 400}px`,
-                top: `${star.top - 480}px`,
-                background:
-                  index >= 3
-                    ? "linear-gradient(180deg, #C069FF 0%, rgba(192, 105, 255, 0) 100%)"
-                    : "linear-gradient(180deg, rgba(192, 105, 255, 0.5) 0%, rgba(192, 105, 255, 0) 100%)",
-                transform: "rotate(-90deg)",
-                borderRadius: "50%",
-                opacity: 0.55,
-              }}
-            />
-          ))}
 
           <div
             className="pointer-events-none absolute"

@@ -46,6 +46,56 @@ function size(value: number | string) {
   return typeof value === "number" ? `${value}px` : value;
 }
 
+const rasterCache = new Map<string, string>();
+
+function rasterizeTile(src: string, px = 192): Promise<string> {
+  const hit = rasterCache.get(src);
+  if (hit) return Promise.resolve(hit);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = px;
+      canvas.height = px;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        rasterCache.set(src, src);
+        resolve(src);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, px, px);
+      try {
+        const url = canvas.toDataURL("image/jpeg", 0.78);
+        rasterCache.set(src, url);
+        resolve(url);
+      } catch {
+        rasterCache.set(src, src);
+        resolve(src);
+      }
+    };
+    img.onerror = () => {
+      rasterCache.set(src, src);
+      resolve(src);
+    };
+    img.src = src;
+  });
+}
+
+function useRasterTiles(sources: string[]) {
+  const key = sources.join("\0");
+  const [tiles, setTiles] = useState(sources);
+  useEffect(() => {
+    let live = true;
+    Promise.all(sources.map((src) => rasterizeTile(src))).then((next) => {
+      if (live) setTiles(next);
+    });
+    return () => {
+      live = false;
+    };
+  }, [key]);
+  return tiles;
+}
+
 export function TiltedTiles({
   images = FALLBACK_IMAGES,
   columns = 16,
@@ -78,7 +128,8 @@ export function TiltedTiles({
 }: TiltedTilesProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const planeRef = useRef<HTMLDivElement>(null);
-  const sources = images.length ? images : FALLBACK_IMAGES;
+  const rawSources = images.length ? images : FALLBACK_IMAGES;
+  const sources = useRasterTiles(rawSources);
   const [inView, setInView] = useState(true);
   const [compact, setCompact] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -159,8 +210,6 @@ export function TiltedTiles({
     });
   }, [colCount, loop, sources, tilesPerColumn]);
 
-  const mask = `linear-gradient(to bottom, transparent 0%, #000 ${fadeTop}%, #000 ${100 - fadeBottom}%, transparent 100%)`;
-
   return (
     <div
       ref={wrapRef}
@@ -189,9 +238,6 @@ export function TiltedTiles({
           gap: columnGap,
           filter: saturation === 1 ? undefined : `saturate(${saturation})`,
           transform: `translate(-50%, -50%) translate3d(${offsetX}px, ${offsetY}px, ${offsetZ}px) rotateX(calc(${rotateX}deg + var(--steer-x, 0deg))) rotateY(calc(${rotateY}deg + var(--steer-y, 0deg))) rotateZ(${rotateZ}deg)`,
-          transformStyle: "preserve-3d",
-          WebkitMaskImage: mask,
-          maskImage: mask,
         }}
       >
         {cols.map((tiles, col) => {
@@ -231,6 +277,12 @@ export function TiltedTiles({
           );
         })}
       </div>
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `linear-gradient(to bottom, #0C0414 0%, transparent ${fadeTop}%, transparent ${100 - fadeBottom}%, #0C0414 100%)`,
+        }}
+      />
     </div>
   );
 }

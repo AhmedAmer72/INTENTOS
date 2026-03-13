@@ -33,8 +33,7 @@ Each constraint has id, type, severity ("hard"|"soft"), label, and type-specific
 - preferred_yield: minimum (number)
 - allowed_actions: actions (string[])
 - no_leverage / audited_contract_only: no extra fields
-NEVER invent constraints the user did not state. Put ambiguous words in unresolvedTerms.
-If a quantity is missing (e.g. "invest some money"), do not guess a number — list it in unresolvedTerms.`;
+NEVER invent constraints the user did not state. Put a term in unresolvedTerms only when the user used a vague word (some, best, soon) or omitted a required quantity (amount). Do not list optional omitted fields such as protocol, duration, or counterparty.`;
 
 const AMBIGUOUS = [
   /\bsome\b/i,
@@ -319,9 +318,6 @@ export async function compileIntent(
     );
   }
 
-  const unresolved = [
-    ...new Set([...(draft.unresolvedTerms ?? []), ...deterministic.unresolvedTerms]),
-  ];
   const envelope: IntentEnvelope = {
     ...deterministic.envelope,
     objective: {
@@ -349,13 +345,10 @@ export async function compileIntent(
   }
   return {
     envelope: parsed.data,
-    unresolvedTerms: unresolved,
+    unresolvedTerms: deterministic.unresolvedTerms,
     sourceText: text,
     usedModel: router.model,
-    challenge: unresolved.length > 0,
-    challengeReason:
-      unresolved.length > 0
-        ? `Ambiguous terms must be clarified, not guessed: ${unresolved.join(", ")}`
-        : undefined,
+    challenge: deterministic.challenge,
+    challengeReason: deterministic.challengeReason,
   };
 }

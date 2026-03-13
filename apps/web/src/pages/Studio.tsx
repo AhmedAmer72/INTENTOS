@@ -706,7 +706,7 @@ function AnchorStep({
       </div>
       {compile.challenge && (
         <p className="rounded-xl border border-challenge/40 px-3 py-2 text-sm text-challenge">
-          {compile.challengeReason ?? "Clarify ambiguous terms before anchoring. The compiler will not guess."}
+          {compile.challengeReason ?? "Some terms are still open. You can register the envelope as written, or go back and add the missing numbers."}
         </p>
       )}
       {!compile.eip712 && (
@@ -733,7 +733,7 @@ function AnchorStep({
         ) : (
           <Button
             className="flex-1"
-            disabled={!compile.eip712 || compile.challenge}
+            disabled={!compile.eip712}
             loading={Boolean(busy)}
             onClick={onRegister}
           >

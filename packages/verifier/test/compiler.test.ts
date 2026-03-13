@@ -22,6 +22,13 @@ describe("intent compiler", () => {
     expect(challenge).toBe(false);
   });
 
+  it("does not challenge a stated amount without vague words", () => {
+    const { challenge, unresolvedTerms, envelope } = compileDeterministic("Deploy 500 USDC", ctx);
+    expect(challenge).toBe(false);
+    expect(unresolvedTerms).toEqual([]);
+    expect(envelope.constraints.hard.some((c) => c.type === "max_capital")).toBe(true);
+  });
+
   it("does not invent an amount for an ambiguous prompt — CHALLENGE instead", () => {
     const text = "Invest some money in the best yield farm soon";
     const { envelope, challenge, unresolvedTerms } = compileDeterministic(text, ctx);

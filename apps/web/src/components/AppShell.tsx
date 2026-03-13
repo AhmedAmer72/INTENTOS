@@ -60,7 +60,7 @@ export function AppShell() {
                     to={tab.to}
                     className={({ isActive }) =>
                       [
-                        "shrink-0 rounded-full px-3.5 py-1.5 font-serif text-[15px] tracking-wide transition",
+                        "shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium tracking-wide transition",
                         isActive
                           ? "bg-primary text-primary-foreground shadow-[0_0_18px_rgba(192,105,255,0.45)]"
                           : "text-white/55 hover:bg-white/5 hover:text-white",

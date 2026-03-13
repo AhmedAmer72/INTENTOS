@@ -38,7 +38,7 @@ export function StudioPreview() {
       <div className="grid gap-4 p-5 md:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-3">
           <p className="text-xs font-medium text-primary">What must stay true</p>
-          <h3 className="font-serif text-2xl text-foreground sm:text-3xl">Write the human objective</h3>
+          <h3 className="text-2xl font-semibold tracking-tight text-foreground">Write the human objective</h3>
           <div className="rounded-xl border border-border bg-background/50 p-3 text-sm leading-relaxed text-muted-foreground">
             Deploy $5,000 USDC into a low-risk yield opportunity for 14 days. No leverage.
           </div>

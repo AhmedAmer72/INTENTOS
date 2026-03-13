@@ -305,7 +305,7 @@ export function Studio() {
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-10">
       <div className="mb-6">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Gate</p>
-        <h1 className="mt-1 font-serif text-3xl sm:text-4xl">Human verify</h1>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Human verify</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Compile, register, greedy-reject, then replan until APPROVE. Meter, reputation, and present live in the
           session pane.
@@ -411,7 +411,7 @@ export function Studio() {
         <aside className="space-y-4">
           <div className="glass rounded-3xl p-5">
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Session</p>
-            <h2 className="mt-1 font-serif text-xl">Envelope</h2>
+            <h2 className="mt-1 text-lg font-semibold">Envelope</h2>
             {envelope ? (
               <div className="mt-4 space-y-3">
                 <p className="text-sm">{envelope.objective.description}</p>
@@ -490,7 +490,7 @@ function IntentStep({
     <div className="space-y-5">
       <div>
         <p className="text-xs font-medium text-primary">What must stay true</p>
-        <h1 className="mt-1 font-serif text-2xl sm:text-3xl">Write the human objective</h1>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Write the human objective</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
           INTENTOS compiles this into a committed envelope. The agent chooses how. Settlement does not.
         </p>
@@ -579,7 +579,7 @@ function AnchorStep({
     <div className="space-y-5">
       <div>
         <p className="text-xs font-medium text-primary">On-chain commitment</p>
-        <h2 className="mt-1 font-serif text-2xl sm:text-3xl">Confirm and register</h2>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight">Confirm and register</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
           Only the keccak of the envelope is posted. The document stays off-chain until evidence lands in 0G Storage.
           MetaMask must confirm the signature — if it flags this Vercel URL, that is their phishing list, not a contract bug.
@@ -656,7 +656,7 @@ function AgentStep({
     <div className="space-y-5">
       <div>
         <p className="text-xs font-medium text-primary">Autonomous proposal</p>
-        <h2 className="mt-1 font-serif text-2xl sm:text-3xl">Choose how the agent plans</h2>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight">Choose how the agent plans</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
           Both calls hit 0G Compute. Greedy usually violates the envelope. Replan asks the same model to obey it.
         </p>
@@ -737,7 +737,7 @@ function VerifyStep({
     <div className="space-y-5">
       <div>
         <p className="text-xs font-medium text-primary">Four-layer scan</p>
-        <h2 className="mt-1 font-serif text-2xl sm:text-3xl">Bind amount and verify</h2>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight">Bind amount and verify</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
           This 0G amount is hashed into the attestation. Changing it later makes deposit revert. Verify calls 0G
           Compute, uploads evidence to Storage, then the oracle attests on-chain. Galileo RPC can take up to ~3
@@ -847,7 +847,7 @@ function ProofStep({
     <div className="space-y-5">
       <div>
         <p className="text-xs font-medium text-primary">Evidence & settlement</p>
-        <h2 className="mt-1 font-serif text-2xl sm:text-3xl">Review, then settle</h2>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight">Review, then settle</h2>
       </div>
       <VerdictStamp verdict={verify.result.verdict} />
       <LayerBreakdown verify={verify} />

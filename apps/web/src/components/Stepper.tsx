@@ -46,7 +46,7 @@ export function Stepper({
                   </span>
                   <span
                     className={cn(
-                      "font-serif text-[11px] sm:text-sm",
+                      "text-[10px] font-medium sm:text-xs",
                       active ? "text-foreground" : "text-muted-foreground",
                     )}
                   >

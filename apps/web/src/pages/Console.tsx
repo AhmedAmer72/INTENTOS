@@ -50,7 +50,7 @@ export function ConsolePage() {
     <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:py-10">
       <div>
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Usage</p>
-        <h1 className="mt-1 font-serif text-3xl sm:text-4xl">Console</h1>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Console</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Last verifications, meter debits, and the append-only 0G Storage batch log.
         </p>

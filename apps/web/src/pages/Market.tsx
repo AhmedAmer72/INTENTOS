@@ -139,7 +139,7 @@ export function Market() {
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-10">
       <div className="mb-6">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Market</p>
-        <h1 className="mt-1 font-serif text-3xl sm:text-4xl">Machines pay the same gate</h1>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Machines pay the same gate</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Agent A publishes a requirement. Agent B offers greedy (expect REJECT) then replans (expect APPROVE).
         </p>

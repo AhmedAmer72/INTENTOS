@@ -171,7 +171,7 @@ export function Playbook() {
         </div>
         <div className="space-y-4">
           <div className="glass rounded-3xl p-5 space-y-3">
-            <p className="text-sm font-medium">1 · Allocate inside caps</p>
+            <p className="font-serif text-xl">1 · Allocate inside caps</p>
             <Button
               className="w-full"
               disabled={!registerTx}
@@ -183,7 +183,7 @@ export function Playbook() {
             {step1 && <VerdictStamp verdict={step1.result.verdict} />}
           </div>
           <div className="glass rounded-3xl p-5 space-y-3">
-            <p className="text-sm font-medium">2 · Settle</p>
+            <p className="font-serif text-xl">2 · Settle</p>
             {!step1Approved && (
               <p className="text-xs text-challenge">Locked until step 1 is APPROVE + attested.</p>
             )}

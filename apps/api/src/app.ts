@@ -31,6 +31,18 @@ import {
   type RouterConfig,
 } from "@intentos/zerog";
 import { config } from "./config.js";
+
+const NET = config.network === "mainnet" ? "mainnet" : "galileo";
+const FUND = NET === "mainnet" ? "https://get.0g.ai" : "https://faucet.0g.ai";
+const HINT = {
+  registerAgent: `pnpm --filter @intentos/contracts register-agent:${NET} and copy the returned id`,
+  deployCore: `pnpm contracts:deploy:${NET}`,
+  deployCorePaste: `pnpm contracts:deploy:${NET} and paste the address into .env`,
+  deployWave45: `pnpm --filter @intentos/contracts deploy:wave45:${NET}`,
+  wave6: `Set Wave 6 addresses from this network's deploy. Do not copy Galileo addresses onto mainnet.`,
+  rpc: NET === "mainnet" ? "Check ZEROG_MAINNET_RPC and INTENT_REGISTRY_ADDRESS" : "Check ZEROG_TESTNET_RPC and INTENT_REGISTRY_ADDRESS",
+  fund: `Fund the wallet from ${FUND}`,
+};
 import { prisma } from "./db.js";
 import {
   flushBatchLog,
@@ -240,7 +252,7 @@ export async function buildServer() {
       ok: Boolean(config.deployerKey && config.deployerKey.length === 66),
       required: true,
       detail: config.deployerKey ? "DEPLOYER_PRIVATE_KEY is set" : "DEPLOYER_PRIVATE_KEY is missing",
-      hint: "Run pnpm provision, then fund the deployer from https://faucet.0g.ai",
+      hint: `Run pnpm provision, then fund the deployer from ${FUND}`,
     });
 
     checks.push({
@@ -264,7 +276,7 @@ export async function buildServer() {
       ok: Boolean(config.agentIdRaw),
       required: true,
       detail: config.agentIdRaw ? `AGENT_ID=${config.agentIdRaw}` : "AGENT_ID is not set",
-      hint: "pnpm --filter @intentos/contracts register-agent:galileo and copy the returned id",
+      hint: HINT.registerAgent,
     });
 
     if (config.registry) {
@@ -277,7 +289,7 @@ export async function buildServer() {
           detail: live
             ? `IntentRegistry ${config.registry}`
             : `No bytecode at INTENT_REGISTRY_ADDRESS ${config.registry}`,
-          hint: live ? undefined : "pnpm contracts:deploy:galileo",
+          hint: live ? undefined : HINT.deployCore,
         });
       } catch (err) {
         checks.push({
@@ -285,7 +297,7 @@ export async function buildServer() {
           ok: false,
           required: true,
           detail: err instanceof Error ? err.message : String(err),
-          hint: "Check ZEROG_TESTNET_RPC and INTENT_REGISTRY_ADDRESS",
+          hint: HINT.rpc,
         });
       }
     } else {
@@ -294,7 +306,7 @@ export async function buildServer() {
         ok: false,
         required: true,
         detail: "INTENT_REGISTRY_ADDRESS is empty",
-        hint: "pnpm contracts:deploy:galileo and paste IntentRegistry into .env",
+        hint: HINT.deployCorePaste,
       });
     }
 
@@ -308,7 +320,7 @@ export async function buildServer() {
           detail: live
             ? `DemoVault ${config.vault}`
             : `No bytecode at DEMO_VAULT_ADDRESS ${config.vault}`,
-          hint: live ? undefined : "pnpm contracts:deploy:galileo",
+          hint: live ? undefined : HINT.deployCore,
         });
       } catch (err) {
         checks.push({
@@ -325,7 +337,7 @@ export async function buildServer() {
         ok: false,
         required: true,
         detail: "DEMO_VAULT_ADDRESS is empty",
-        hint: "pnpm contracts:deploy:galileo and paste DemoVault into .env",
+        hint: HINT.deployCorePaste,
       });
     }
 
@@ -343,7 +355,7 @@ export async function buildServer() {
           ok: bal > 0n,
           required: true,
           detail: bal > 0n ? `Oracle has ${formatEther(bal)} 0G` : `Oracle ${account.address} has 0 0G`,
-          hint: bal > 0n ? undefined : "Fund the oracle from the deployer or https://faucet.0g.ai",
+          hint: bal > 0n ? undefined : `Fund the oracle from the deployer or ${FUND}`,
         });
         if (config.registry) {
           try {
@@ -400,7 +412,7 @@ export async function buildServer() {
           ok: bal > 0n,
           required: true,
           detail: bal > 0n ? `Deployer has ${formatEther(bal)} 0G` : `Deployer ${account.address} has 0 0G`,
-          hint: bal > 0n ? undefined : "Fund the deployer from https://faucet.0g.ai",
+          hint: bal > 0n ? undefined : HINT.fund,
         });
       } catch (err) {
         checks.push({
@@ -455,7 +467,7 @@ export async function buildServer() {
         ok: false,
         required: false,
         detail: "VERIFICATION_METER_ADDRESS is empty",
-        hint: "pnpm --filter @intentos/contracts deploy:wave45:galileo",
+        hint: HINT.deployWave45,
       });
     }
 
@@ -539,7 +551,7 @@ export async function buildServer() {
           ok: false,
           required: false,
           detail: `${item.label} not set`,
-          hint: "Set the Wave 6 address on the API env. Contracts are already on Galileo — do not redeploy registry or vault.",
+          hint: HINT.wave6,
         });
         continue;
       }

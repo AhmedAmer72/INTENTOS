@@ -4,14 +4,14 @@ import { fileURLToPath } from "node:url";
 import { resolveNetwork, type ZeroGNetworkName } from "@intentos/zerog";
 
 const here = dirname(fileURLToPath(import.meta.url));
-loadEnv({ path: resolve(here, "../../../.env") });
-loadEnv({ path: resolve(here, "../.env"), override: false });
+loadEnv({ path: resolve(here, "../.env") });
+loadEnv({ path: resolve(here, "../../../.env"), override: true });
 
 function req(name: string, fallback = ""): string {
   return process.env[name] ?? fallback;
 }
 
-const network = (req("ZEROG_NETWORK", "galileo") as ZeroGNetworkName) || "galileo";
+const network = (req("ZEROG_NETWORK", "mainnet") as ZeroGNetworkName) || "mainnet";
 const net = resolveNetwork(network);
 
 export const config = {

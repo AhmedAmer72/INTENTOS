@@ -10,8 +10,8 @@ INTENTOS is not a wallet, a copilot, a trading bot, a firewall, or a policy dash
 
 | | |
 | --- | --- |
-| **Network (live)** | 0G Galileo testnet · chain `16602` |
-| **Explorer** | [chainscan-galileo.0g.ai](https://chainscan-galileo.0g.ai) |
+| **Network (live)** | 0G Aristotle mainnet · chain `16661` |
+| **Explorer** | [chainscan.0g.ai](https://chainscan.0g.ai) |
 | **Stack** | pnpm monorepo · Node 22 · TypeScript · Vite · Fastify · Prisma · Solidity 0.8.24 (Cancun) |
 | **License** | MIT |
 
@@ -42,27 +42,29 @@ There is no regex-only or offline demo path. Missing Router, Storage, contracts,
 
 ---
 
-## Live Galileo deployment
+## Live Aristotle deployment
 
-Do **not** redeploy `IntentRegistry` or `DemoVault`. Wave 4–5 added meter, consumer, and Agentic ID v1. Wave 6 adds executor, bounty, and Agentic ID v2 via `pnpm contracts:deploy:wave6:galileo` (script refuses to deploy registry/vault).
+0G mainnet, chain `16661`. Addresses live in `packages/contracts/deployments/mainnet.json`. Do **not** mix these with Galileo `16602`.
 
 | Contract | Address |
 | --- | --- |
-| IntentRegistry | [`0xfdDe66249e140aCbF36B65a801A9de58bF8a7Fb9`](https://chainscan-galileo.0g.ai/address/0xfdDe66249e140aCbF36B65a801A9de58bF8a7Fb9) |
-| DemoVault | [`0x8F0F527c299bA7085AE258fdB5D32b4E52AE6Cf6`](https://chainscan-galileo.0g.ai/address/0x8F0F527c299bA7085AE258fdB5D32b4E52AE6Cf6) |
-| VerificationMeter | [`0x160046e7d8b6497d77F0eAdD6C20eb14A158753d`](https://chainscan-galileo.0g.ai/address/0x160046e7d8b6497d77F0eAdD6C20eb14A158753d) |
-| CertificateConsumer | [`0x13B90C0563Aa98015793aC4e0F3F4379950b1208`](https://chainscan-galileo.0g.ai/address/0x13B90C0563Aa98015793aC4e0F3F4379950b1208) |
-| IntentosAgenticId | [`0x4F4d5ad11616fE14dbBA1aA88A4EC800C162a4Fc`](https://chainscan-galileo.0g.ai/address/0x4F4d5ad11616fE14dbBA1aA88A4EC800C162a4Fc) token `#1` |
-| IntentExecutor | [`0xDfa18235Be977759eA81432234386B8cA086Bd12`](https://chainscan-galileo.0g.ai/address/0xDfa18235Be977759eA81432234386B8cA086Bd12) |
-| SettlementTarget | [`0x0066F84EADB94064F3d91624348ba2c72d303116`](https://chainscan-galileo.0g.ai/address/0x0066F84EADB94064F3d91624348ba2c72d303116) |
-| IntentBounty | [`0x25cB00682e345504d4EDC146CedF4CC31fc1816E`](https://chainscan-galileo.0g.ai/address/0x25cB00682e345504d4EDC146CedF4CC31fc1816E) |
-| IntentosAgenticIdV2 | [`0x197C8750560a0b925401eF0F4fDDc0182f18A971`](https://chainscan-galileo.0g.ai/address/0x197C8750560a0b925401eF0F4fDDc0182f18A971) token `#1` |
-| ERC-8004 Identity (0G) | [`0x8004A818BFB912233c491871b3d84c89A494BD9e`](https://chainscan-galileo.0g.ai/address/0x8004A818BFB912233c491871b3d84c89A494BD9e) · agent **361** (Agent B), **362** (requirement / Agent A) |
-| ERC-8004 Reputation (0G) | [`0x8004B663056A597Dffe9eCcC1965A193B7388713`](https://chainscan-galileo.0g.ai/address/0x8004B663056A597Dffe9eCcC1965A193B7388713) |
+| IntentRegistry | [`0x8FB1A3CFf48EC873Ef0526A902425813979c7b9e`](https://chainscan.0g.ai/address/0x8FB1A3CFf48EC873Ef0526A902425813979c7b9e) |
+| DemoVault | [`0xcf6a53b0A22989Ad6B1834C7844CfB9B0d3A9125`](https://chainscan.0g.ai/address/0xcf6a53b0A22989Ad6B1834C7844CfB9B0d3A9125) |
+| VerificationMeter | [`0xaBfbe94121DC9BD17056642b9Cf79d93498bfA8A`](https://chainscan.0g.ai/address/0xaBfbe94121DC9BD17056642b9Cf79d93498bfA8A) |
+| CertificateConsumer | [`0x95F9098bB17A79a7be6100D269a668DEf40527EE`](https://chainscan.0g.ai/address/0x95F9098bB17A79a7be6100D269a668DEf40527EE) |
+| IntentosAgenticId | [`0x1BF7e38D0670C856f64326bc4Fc4D9C281e5F087`](https://chainscan.0g.ai/address/0x1BF7e38D0670C856f64326bc4Fc4D9C281e5F087) token `#1` |
+| IntentExecutor | [`0x22535C947Fd951bbC6C03f8D8A1159ad3a159c46`](https://chainscan.0g.ai/address/0x22535C947Fd951bbC6C03f8D8A1159ad3a159c46) |
+| SettlementTarget | [`0x744E0ba6660E98074f30ef8Ad267aF914e222f7a`](https://chainscan.0g.ai/address/0x744E0ba6660E98074f30ef8Ad267aF914e222f7a) |
+| IntentBounty | [`0xE8814DC8a9d5c37beC6AeBD232815cEaeCAE753F`](https://chainscan.0g.ai/address/0xE8814DC8a9d5c37beC6AeBD232815cEaeCAE753F) |
+| IntentosAgenticIdV2 | [`0x29d376Fa105333946d8Aa989C66579f55223De32`](https://chainscan.0g.ai/address/0x29d376Fa105333946d8Aa989C66579f55223De32) token `#1` |
+| ERC-8004 Identity (0G) | [`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`](https://chainscan.0g.ai/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432) · agent **3537786** (Agent B), **3537791** (requirement / Agent A) |
+| ERC-8004 Reputation (0G) | [`0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`](https://chainscan.0g.ai/address/0x8004BAa17C55a88189AE136b182e5fdA19dE9b63) |
 
-Verify price: `100000000000000` wei (0.0001 0G) per `/verify`, including `REJECT`.
+Verify price: `100000000000000` wei (0.0001 0G) per `/verify`, including `REJECT`. Challenge delay: `900` seconds.
 
-0G Mainnet (Aristotle, `16661`) is not deployed. The runbook is [docs/mainnet-deploy.md](docs/mainnet-deploy.md) (`pnpm contracts:deploy:mainnet`, then wave45/wave6). Official Identity / Reputation addresses are in `.env.example`.
+Galileo (`16602`) remains deployed and must not be redeployed. Addresses: `packages/contracts/deployments/galileo.json`. Agent B **361**, Agent A **362**.
+
+Local app: `ZEROG_NETWORK=mainnet`, `VITE_CHAIN_ID=16661`. Hosted Render / Vercel still need those values in their dashboards.
 
 ---
 
@@ -103,8 +105,8 @@ Natural language
 | **Chain** | IntentRegistry, DemoVault, VerificationMeter, CertificateConsumer, IntentosAgenticId, IntentExecutor, IntentBounty, IntentosAgenticIdV2. Solidity **0.8.24**, `evmVersion: cancun`, `viaIR`. |
 | **Compute** | Router (`qwen2.5-omni`, TEE-attested chat). Compile, propose, Layer 2. Not the deprecated serving-broker. |
 | **Storage** | Compiled envelopes, evidence blobs, and encrypted 7857 metadata via `@0gfoundation/0g-storage-ts-sdk`. |
-| **ERC-8004** | Live Identity + Reputation. Agent ids 361 / 362 on Galileo. |
-| **ERC-7857-shaped** | v1 historical mint. v2 oracle-gated `transfer` / `clone`. Metadata includes `agentId: 361`. |
+| **ERC-8004** | Live Identity + Reputation. Aristotle agents **3537786** / **3537791**. Galileo **361** / **362**. |
+| **ERC-7857-shaped** | v1 historical mint. v2 oracle-gated `transfer` / `clone`. Mainnet metadata uses agent **3537786**. |
 | **Payment** | Router deposit = Payment Layer (Compute). `VerificationMeter` = per-verify prepaid 0G. `IntentBounty` = A2A Pay after APPROVE. |
 | **DA** | Deferred. No published mainnet `DAEntrance`. Execution traces batch to 0G Storage (`GET /log`, flush every 3 events). |
 
@@ -162,8 +164,8 @@ SDK: `@intentos/agent-sdk` — `verify`, `verifyA2A`, `verifyStep`, `meter.credi
 
 - Node.js **≥ 22** (see `.nvmrc`)
 - [pnpm](https://pnpm.io) **10.28.2** (`packageManager` field; Corepack is enough)
-- A browser wallet on Galileo (MetaMask will be prompted to add chain `16602`)
-- 0G testnet 0G for gas, meter deposits, and Router inference ([pc.testnet.0g.ai](https://pc.testnet.0g.ai) → API keys)
+- A browser wallet on 0G Mainnet (MetaMask will be prompted to add chain `16661`)
+- Mainnet 0G for gas, meter deposits, and Router inference ([pc.0g.ai](https://pc.0g.ai) → API keys)
 
 ---
 
@@ -176,14 +178,14 @@ pnpm install
 cp .env.example .env
 pnpm provision                 # writes gitignored wallets into .env
 # Fund deployer + oracle; set ZEROG_ROUTER_API_KEY and AGENT_ID
-# Point contract addresses at the Galileo table above (already in deployments/galileo.json)
+# Point contract addresses at the Aristotle table above (already in deployments/mainnet.json)
 pnpm db:generate
 pnpm db:push
 pnpm test
 pnpm dev                       # API :8787  ·  web :3000
 ```
 
-Open `http://localhost:3000`. Connect a **principal** wallet that does **not** own agent 361 if you will run `giveFeedback`.
+Open `http://localhost:3000`. Connect a **principal** wallet that does **not** own agent 3537786 if you will run `giveFeedback`.
 
 Provisioning detail: [docs/provisioning.md](docs/provisioning.md). Never commit `.env` or `.wallets.json`.
 
@@ -221,7 +223,7 @@ Judge checklist: [docs/judge-guide.md](docs/judge-guide.md). A2A without UI: `pn
 
 | Service | Target | Config |
 | --- | --- | --- |
-| Web | Vercel | Root Directory empty. `framework: null` → `apps/web/dist`. Set `VITE_API_URL`, `VITE_CHAIN_ID=16602`. |
+| Web | Vercel | Root Directory empty. `framework: null` → `apps/web/dist`. Set `VITE_API_URL`, `VITE_CHAIN_ID=16661`. |
 | API | Render | `render.yaml`. `API_HOST=0.0.0.0`, Render `PORT`. SQLite on free tier is ephemeral; chain state is not. |
 
 Full env list and steps: [docs/deploy.md](docs/deploy.md). Put Router keys and private keys only in the host’s secret store.

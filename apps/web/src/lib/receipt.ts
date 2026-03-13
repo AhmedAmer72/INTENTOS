@@ -13,7 +13,7 @@ export async function waitForReceipt(
       const receipt = await client.getTransactionReceipt({ hash });
       if (receipt) return receipt;
     } catch {
-      /* Galileo often has not indexed the hash yet */
+      /* 0G RPC often has not indexed the hash yet */
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }

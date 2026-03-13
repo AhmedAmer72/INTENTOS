@@ -1,79 +1,60 @@
 # Mainnet deployment (Aristotle, chain 16661)
 
-Galileo (`16602`) is the live demo. This file is the Aristotle runbook. **Do not run the commands below until you intend to spend mainnet 0G.** There is no mainnet registry yet — `packages/contracts/deployments/mainnet.json` is a stub.
+**Deployed.** Live addresses are in `packages/contracts/deployments/mainnet.json` and the README Aristotle table.
 
-Do **not** point these scripts at the live Galileo registry. Set `ZEROG_NETWORK=mainnet` and leave Galileo addresses out of the session.
+Do **not** point these scripts at the live Galileo registry (`0xfdDe…7Fb9`). Do **not** redeploy the Aristotle registry/vault unless you intend a new stack.
 
-## Prerequisites
+| Contract | Address |
+| --- | --- |
+| IntentRegistry | `0x8FB1A3CFf48EC873Ef0526A902425813979c7b9e` |
+| DemoVault | `0xcf6a53b0A22989Ad6B1834C7844CfB9B0d3A9125` |
+| VerificationMeter | `0xaBfbe94121DC9BD17056642b9Cf79d93498bfA8A` |
+| CertificateConsumer | `0x95F9098bB17A79a7be6100D269a668DEf40527EE` |
+| IntentosAgenticId | `0x1BF7e38D0670C856f64326bc4Fc4D9C281e5F087` token `#1` |
+| IntentExecutor | `0x22535C947Fd951bbC6C03f8D8A1159ad3a159c46` |
+| SettlementTarget | `0x744E0ba6660E98074f30ef8Ad267aF914e222f7a` |
+| IntentBounty | `0xE8814DC8a9d5c37beC6AeBD232815cEaeCAE753F` |
+| IntentosAgenticIdV2 | `0x29d376Fa105333946d8Aa989C66579f55223De32` token `#1` |
+| ERC-8004 Agent B | `3537786` (`0x…35fb7a`) |
+| ERC-8004 Agent A | `3537791` (`0x…35fb7f`) |
 
-- [ ] Deployer funded with about **1 0G** on chain 16661 (registry + vault is cheap; leave headroom for wave 4–6, storage, and meter). See [provisioning.md](provisioning.md).
-- [ ] Mainnet Router `sk-` key from https://pc.0g.ai
-- [ ] `.env` for this session:
-  - `ZEROG_NETWORK=mainnet`
-  - `ZEROG_MAINNET_RPC=https://evmrpc.0g.ai`
-  - `DEPLOYER_PRIVATE_KEY` / `VERIFIER_ORACLE_PRIVATE_KEY`
-  - `ZEROG_ROUTER_API_KEY` (mainnet)
-  - `ZEROG_STORAGE_UPLOAD=1`
-  - `VERIFY_PRICE_WEI=100000000000000`
-  - `CHALLENGE_DELAY_SECONDS=900`
-- [ ] `AGENT_ID` and `REQUIREMENT_AGENT_ID` empty until step 6 (mainnet 8004 ids are not 361/362)
+Local wire: `ZEROG_NETWORK=mainnet`, `VITE_CHAIN_ID=16661`, plus the addresses above.
 
-## Order of operations
-
-From the repo root, with the mainnet `.env` loaded:
+## Re-run (only for a new stack)
 
 ```bash
 pnpm contracts:compile
-
-# 1. Registry + DemoVault only. Writes packages/contracts/deployments/mainnet.json
 pnpm contracts:deploy:mainnet
-
-# 2. Copy IntentRegistry / DemoVault into .env, then:
 pnpm contracts:deploy:wave45:mainnet
-
-# 3. Executor, SettlementTarget, Bounty, Agentic ID v2. Never deploys registry/vault.
 pnpm contracts:deploy:wave6:mainnet
-
-# 4. ERC-8004 identity on the official mainnet registry
 pnpm --filter @intentos/contracts register-agent:mainnet
-# Set AGENT_ID (Agent B) and a second REQUIREMENT_AGENT_ID (Agent A)
-
-# 5. Mint Agentic ID v2. Metadata must include the mainnet agentId from step 4.
 pnpm --filter @intentos/contracts mint-agentic-id-v2:mainnet
-
-# 6. Source verify on chainscan (skips addresses not in mainnet.json)
 pnpm --filter @intentos/contracts verify:mainnet
 ```
 
-Then set:
+Wave 6 refuses to deploy registry/vault. Mainnet 8004 ids are not Galileo 361/362.
+
+## Compute
+
+Official mainnet Router is `https://router-api.0g.ai/v1` (`qwen3.8-flash` is TEE-attested there). A Galileo `sk-` key can list models but **cannot** complete. Create a key + deposit at https://pc.0g.ai, then set:
 
 ```
-INTENT_REGISTRY_ADDRESS=0x...
-DEMO_VAULT_ADDRESS=0x...
-VERIFICATION_METER_ADDRESS=0x...
-CERTIFICATE_CONSUMER_ADDRESS=0x...
-AGENTIC_ID_ADDRESS=0x...
-AGENTIC_ID_TOKEN=1
-INTENT_EXECUTOR_ADDRESS=0x...
-SETTLEMENT_TARGET_ADDRESS=0x...
-INTENT_BOUNTY_ADDRESS=0x...
-AGENTIC_ID_V2_ADDRESS=0x...
-AGENTIC_ID_V2_TOKEN=1
-CHALLENGE_DELAY_SECONDS=900
-VITE_CHAIN_ID=16661
-ZEROG_NETWORK=mainnet
+ZEROG_ROUTER_URL_MAINNET=https://router-api.0g.ai/v1
+ZEROG_ROUTER_MODEL=qwen3.8-flash
+ZEROG_ROUTER_API_KEY=sk-…
 ```
 
-`GET /ready` must be `"ok": true` on mainnet RPC before you cut the hosted API over.
+Until that key exists, local compile/verify can keep using the Galileo Router URL with the existing testnet `sk-`.
 
-## Hosting cutover (after contracts exist)
+## Hosting cutover
 
 Render (API):
 
 - `ZEROG_NETWORK=mainnet`
 - `ZEROG_MAINNET_RPC=https://evmrpc.0g.ai`
-- Mainnet Router key and all new contract addresses
-- Restart the service. Confirm `https://<render>/ready` → `"ok": true`, `chainId: 16661`
+- All Aristotle addresses and agent ids from the table
+- Router key (mainnet `sk-` when you have one)
+- Restart. Confirm `GET /ready` → `"ok": true`, `chainId: 16661`
 
 Vercel (web):
 
@@ -82,18 +63,6 @@ Vercel (web):
 - Redeploy the web so the client bundle picks up the new chain
 
 Do not mix Galileo addresses with `VITE_CHAIN_ID=16661`.
-
-## Five explorer transactions judges expect
-
-1. `registerIntent` for the demo envelope
-2. `recordVerification` REJECT for the greedy proposal (optional but good)
-3. `DemoVault.deposit` **revert** `IntentNotApproved` for that action — the spoken demo
-4. `recordVerification` APPROVE for the replanned proposal
-5. `DemoVault.deposit` success
-
-Optional: meter `Debited`, `IntentExecutor.execute` after the 900s delay, `IntentBounty` fund/claim, Agentic ID v2 transfer.
-
-Paste tx hashes into the README "Live on 0G" table after they land.
 
 ## Constructor args (manual chainscan)
 

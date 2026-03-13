@@ -30,7 +30,7 @@ type WalletState = {
 
 const Ctx = createContext<WalletState | null>(null);
 
-const NO_WALLET = "No injected wallet. Install MetaMask — Connect will offer to add 0G Galileo for you.";
+const NO_WALLET = `No injected wallet. Install MetaMask — Connect will offer to add ${targetChain.name} for you.`;
 
 async function addOrSwitchChain() {
   const eth = getInjectedProvider();
@@ -74,7 +74,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     () =>
       createPublicClient({
         chain: targetChain,
-        transport: http(targetChain.rpcUrls.default.http[0] ?? "https://evmrpc-testnet.0g.ai", {
+        transport: http(targetChain.rpcUrls.default.http[0] ?? "https://evmrpc.0g.ai", {
           timeout: 30_000,
           retryCount: 5,
           retryDelay: 1_200,

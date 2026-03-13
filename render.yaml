@@ -18,13 +18,15 @@ services:
       - key: DATABASE_URL
         value: file:./prisma/prod.db
       - key: ZEROG_NETWORK
-        value: galileo
-      - key: ZEROG_TESTNET_RPC
-        value: https://evmrpc-testnet.0g.ai
+        value: mainnet
+      - key: ZEROG_MAINNET_RPC
+        value: https://evmrpc.0g.ai
       - key: ZEROG_STORAGE_UPLOAD
         value: "1"
       - key: ZEROG_ROUTER_MODEL
-        value: qwen2.5-omni
+        value: qwen3.8-flash
+      - key: ZEROG_ROUTER_URL_MAINNET
+        value: https://router-api.0g.ai/v1
       - key: VERIFY_PRICE_WEI
         value: "100000000000000"
       - key: ZEROG_ROUTER_API_KEY

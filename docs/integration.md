@@ -13,6 +13,8 @@ Live documentation as of August 2026. Do not use deprecated package names.
 
 solc 0.8.19 does not implement `cancun`. 0G Chain is Cancun; we pin **0.8.24 + cancun** so explorer verification matches the live EVM. Avoid Prague/Osaka.
 
+Live Aristotle (do **not** redeploy): `IntentRegistry` `0x8FB1A3CFf48EC873Ef0526A902425813979c7b9e`, `DemoVault` `0xcf6a53b0A22989Ad6B1834C7844CfB9B0d3A9125`. Full table: `packages/contracts/deployments/mainnet.json`.
+
 Live Galileo (do **not** redeploy): `IntentRegistry` `0xfdDe66249e140aCbF36B65a801A9de58bF8a7Fb9`, `DemoVault` `0x8F0F527c299bA7085AE258fdB5D32b4E52AE6Cf6`.
 
 Wave 4–5 (Galileo only) deploys `VerificationMeter`, `CertificateConsumer`, `IntentosAgenticId`:
@@ -64,7 +66,7 @@ Pin `ZEROG_ROUTER_MODEL` to a `tee_attested` model from `GET /v1/models`. If the
 - Mainnet IdentityRegistry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
 - Mainnet ReputationRegistry `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`
 
-Agent B (offer) is `AGENT_ID=361`. Register a second identity for Agent A:
+Agent B (offer) is `AGENT_ID=3537786` on Aristotle (`361` on Galileo). Register a second identity for Agent A:
 
 ```bash
 pnpm --filter @intentos/contracts register-agent:galileo
@@ -78,7 +80,7 @@ pnpm --filter @intentos/contracts mint-agentic-id:galileo
 pnpm --filter @intentos/contracts mint-agentic-id-v2:galileo
 ```
 
-v2 metadata **must** include ERC-8004 `agentId: 361`. Transfer: `POST /agentic/v2/proof` then the holder `writeContract transfer`. Same URI/hash is allowed when no new AES key is issued.
+v2 metadata **must** include the live ERC-8004 `agentId` (`3537786` on Aristotle, `361` on Galileo). Transfer: `POST /agentic/v2/proof` then the holder `writeContract transfer`. Same URI/hash is allowed when no new AES key is issued.
 
 ## DA
 

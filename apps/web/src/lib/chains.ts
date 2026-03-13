@@ -16,9 +16,13 @@ export const aristotle = defineChain({
   blockExplorers: { default: { name: "Chainscan", url: "https://chainscan.0g.ai" } },
 });
 
-export const TARGET_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID ?? 16602);
+export const TARGET_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID ?? 16661);
 
 export const targetChain = TARGET_CHAIN_ID === 16661 ? aristotle : galileo;
+
+export const targetExplorer = targetChain.blockExplorers?.default.url ?? "https://chainscan.0g.ai";
+
+export const targetShortName = TARGET_CHAIN_ID === 16661 ? "Mainnet" : "Galileo";
 
 export function hexChainId(id: number): `0x${string}` {
   return `0x${id.toString(16)}`;

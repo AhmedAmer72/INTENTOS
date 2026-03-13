@@ -27,6 +27,8 @@
     "contracts:deploy:galileo": "pnpm --filter @intentos/contracts deploy:galileo",
     "contracts:deploy:wave45:galileo": "pnpm --filter @intentos/contracts deploy:wave45:galileo",
     "contracts:deploy:wave6:galileo": "pnpm --filter @intentos/contracts deploy:wave6:galileo",
+    "contracts:deploy:wave45:mainnet": "pnpm --filter @intentos/contracts deploy:wave45:mainnet",
+    "contracts:deploy:wave6:mainnet": "pnpm --filter @intentos/contracts deploy:wave6:mainnet",
     "contracts:deploy:mainnet": "pnpm --filter @intentos/contracts deploy:mainnet",
     "db:generate": "pnpm --filter @intentos/api db:generate",
     "db:push": "pnpm --filter @intentos/api db:push"

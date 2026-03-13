@@ -23,7 +23,7 @@ SQLite (`file:./prisma/prod.db`) is ephemeral on the free plan. Redeploys reset 
 | Name | Value |
 | --- | --- |
 | `VITE_API_URL` | Render origin from step 1 |
-| `VITE_CHAIN_ID` | `16602` (Galileo) |
+| `VITE_CHAIN_ID` | `16602` (Galileo). Use `16661` only after Aristotle contracts exist. See [mainnet-deploy.md](mainnet-deploy.md). |
 
 6. Deploy. Client routes (`/studio`, `/market`, `/console`, `/proof/:hash`) rewrite to `index.html`.
 

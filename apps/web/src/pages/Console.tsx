@@ -5,6 +5,7 @@ import { api, short } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
 import { AGENTIC_ID_V2_ABI } from "@/lib/abi";
 import { targetChain } from "@/lib/chains";
+import { NextStepBanner } from "@/components/NextStep";
 import { StatusRail } from "@/components/StatusRail";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,9 +62,23 @@ export function ConsolePage() {
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Usage</p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Console</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Last verifications, meter debits, and the append-only 0G Storage batch log.
+          A log of Gate, Market, and Playbook verifies. CHALLENGE here means a verify did not settle — not a 15-minute
+          executor wait.
         </p>
       </div>
+      {(usage?.counts.total ?? 0) === 0 ? (
+        <NextStepBanner
+          tone="wait"
+          title="No verifies yet"
+          body="Start on Gate: compile, greedy-reject, replan until APPROVE, then deposit. This page fills in after that."
+        />
+      ) : (
+        <NextStepBanner
+          tone="wait"
+          title="This is a log, not a next action"
+          body="Open a certificate from the table if you need explorer links. Agentic ID transfer below is optional Wave 6."
+        />
+      )}
       <StatusRail ready={ready} />
       <AgenticV2Transfer meta={meta} />
       <div className="grid gap-3 sm:grid-cols-4">
@@ -95,6 +110,13 @@ export function ConsolePage() {
             </tr>
           </thead>
           <tbody>
+            {(usage?.items ?? []).length === 0 && (
+              <tr>
+                <td className="px-3 py-6 text-muted-foreground" colSpan={5}>
+                  Empty until you finish a verify on Gate, Market, or Playbook.
+                </td>
+              </tr>
+            )}
             {(usage?.items ?? []).map((row) => (
               <tr key={row.id} className="border-t border-border">
                 <td className="px-3 py-2 text-muted-foreground">
@@ -129,7 +151,8 @@ function AgenticV2Transfer({ meta }: { meta: Meta | null }) {
       <div className="glass rounded-2xl p-5">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Agentic ID v2</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Deploy Wave 6 and set AGENTIC_ID_V2_ADDRESS / AGENTIC_ID_V2_TOKEN to transfer with an oracle proof.
+          Agentic ID v2 is already on Galileo. This API session is missing AGENTIC_ID_V2_ADDRESS — set it on the API
+          env. Do not redeploy.
         </p>
       </div>
     );
@@ -176,13 +199,15 @@ function AgenticV2Transfer({ meta }: { meta: Meta | null }) {
   };
 
   return (
-    <div className="glass rounded-2xl p-5">
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Agentic ID v2</p>
-      <p className="mt-1 font-mono text-xs break-all">
+    <details className="glass rounded-2xl p-5">
+      <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Optional · Agentic ID v2 transfer
+      </summary>
+      <p className="mt-2 font-mono text-xs break-all">
         {meta.agenticIdV2} · token #{meta.agenticTokenV2}
       </p>
       <p className="mt-2 text-sm text-muted-foreground">
-        Oracle-gated transfer. Same encrypted URI/hash is allowed when you omit a new key.
+        Oracle-gated transfer for Beat 4. Skip this until Gate deposit works. Use a recipient address you control.
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder="0x recipient" />
@@ -196,6 +221,6 @@ function AgenticV2Transfer({ meta }: { meta: Meta | null }) {
         </a>
       )}
       {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-    </div>
+    </details>
   );
 }

@@ -539,7 +539,7 @@ export async function buildServer() {
           ok: false,
           required: false,
           detail: `${item.label} not set`,
-          hint: "pnpm contracts:deploy:wave6:galileo",
+          hint: "Set the Wave 6 address on the API env. Contracts are already on Galileo — do not redeploy registry or vault.",
         });
         continue;
       }

@@ -135,6 +135,19 @@ export function CertificatePage() {
         <p className={`mt-10 font-serif text-3xl italic ${v === "APPROVE" ? "" : "text-reject"}`}>
           {v === "APPROVE" ? "Verified" : v}
         </p>
+        <p className="mt-2 text-sm opacity-70">
+          {v === "APPROVE" ? (
+            <>This stamp can settle. If you have not deposited yet, go back to Gate and press Deposit.</>
+          ) : (
+            <>
+              This plan cannot settle.{" "}
+              <Link className="underline" to="/studio">
+                Back to Gate — replan, then verify
+              </Link>
+              .
+            </>
+          )}
+        </p>
 
         <div className="mt-8 space-y-3 border-t border-ink/20 pt-6">
           <HashField label="Intent hash" value={cert?.intentHash} />

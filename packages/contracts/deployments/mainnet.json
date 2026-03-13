@@ -3,5 +3,5 @@
   "chainId": 16661,
   "IntentRegistry": "",
   "DemoVault": "",
-  "note": "Filled by scripts/deploy.ts after a live mainnet deploy. Wave 3 submission requires this address plus explorer verification."
+  "note": "Stub. Fill via docs/mainnet-deploy.md (deploy:mainnet, then wave45/wave6). Do not copy Galileo addresses here."
 }

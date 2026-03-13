@@ -73,10 +73,16 @@ export function MeterStrip({
     <div className="flex flex-wrap items-center gap-2 rounded-full border border-border bg-black/20 px-3 py-1.5 text-[11px] text-muted-foreground">
       <span>Meter {short}</span>
       {meter?.configured && price > 0n && <span>· fee {formatEther(price)} 0G</span>}
-      {meter?.configured && credits < price && <span className="text-challenge">deposit required</span>}
+      {meter?.configured && credits < price && <span className="text-challenge">credits needed to verify</span>}
       {meter?.configured && (
-        <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={deposit}>
-          Deposit
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-[11px]"
+          title="Prepaid 0G for verify fees — not the DemoVault deposit"
+          onClick={deposit}
+        >
+          Add credits
         </Button>
       )}
     </div>

@@ -5,6 +5,7 @@ import { api, short } from "@/lib/api";
 import { waitForReceipt } from "@/lib/receipt";
 import { DEMO_VAULT_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
 import { targetChain } from "@/lib/chains";
+import { FailedRules, NextStepBanner } from "@/components/NextStep";
 import { PresentCertificate } from "@/components/PresentCertificate";
 import { VerdictStamp } from "@/components/VerdictStamp";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ function bindStep(action: Action, stepId: string): Action {
 }
 
 export function Playbook() {
-  const { address, ensureChain, client, publicClient } = useWallet();
+  const { address, isConnected, ensureChain, client, publicClient } = useWallet();
   const [ready, setReady] = useState<Ready | null>(null);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [text, setText] = useState(DEMO_PLACEHOLDER);
@@ -33,7 +34,68 @@ export function Playbook() {
 
   const envelope: Envelope | null = compile?.envelope ?? null;
   const explorer = meta?.explorer ?? ready?.explorer;
+  const live = ready?.ok !== false;
   const step1Approved = Boolean(step1?.result.verdict === "APPROVE" && step1.attest?.ok);
+  const step2Approved = step2?.result.verdict === "APPROVE";
+  const playbookGuide = !isConnected
+    ? {
+        tone: "wait" as const,
+        title: "Connect a wallet",
+        body: "Use Connect in the header. Both steps and the final deposit need Galileo.",
+      }
+    : !live
+      ? {
+          tone: "stop" as const,
+          title: "The live rail is not ready",
+          body: "Open Console and wait for required checks, then compile the two-step envelope.",
+        }
+      : !compile
+        ? {
+            tone: "wait" as const,
+            title: "Compile the two-step envelope",
+            body: "This locks allocate-then-settle. Deposit still waits for both APPROVE stamps.",
+          }
+        : !registerTx
+          ? {
+              tone: "wait" as const,
+              title: "Register the playbook",
+              body: "Sign registerIntent. Step 1 stays locked until this transaction lands.",
+            }
+          : !step1
+            ? {
+                tone: "wait" as const,
+                title: "Verify step 1 (allocate)",
+                body: "This asks the agent to stay inside the caps. If it REJECTS, press Verify step 1 again.",
+              }
+            : !step1Approved
+              ? {
+                  tone: "stop" as const,
+                  title: "Step 1 is not APPROVE. Verify it again.",
+                  body: "Step 2 stays locked on purpose. Retry step 1 until the stamp is green and attested.",
+                }
+              : !step2
+                ? {
+                    tone: "wait" as const,
+                    title: "Verify step 2 (settle)",
+                    body: "Step 1 cleared. This is the settlement plan — still not a deposit.",
+                  }
+                : !step2Approved
+                  ? {
+                      tone: "stop" as const,
+                      title: "Step 2 is blocked. Verify it again.",
+                      body: "Do not deposit. Retry step 2 until APPROVE.",
+                    }
+                  : !settleTx
+                    ? {
+                        tone: "go" as const,
+                        title: "Deposit on DemoVault",
+                        body: "Both steps are APPROVE. This is the only deposit in the playbook.",
+                      }
+                    : {
+                        tone: "go" as const,
+                        title: "Playbook settled",
+                        body: "Open the certificate if you need explorer links.",
+                      };
 
   useEffect(() => {
     api<Ready>("/ready").then(setReady).catch(() => setReady(null));
@@ -156,16 +218,32 @@ export function Playbook() {
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Playbook</p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Allocate, then settle</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Step 2 cannot verify until step 1 is APPROVE on-chain. DemoVault.deposit runs only on the final step.
+          Two verifies, one deposit. Step 2 stays locked until step 1 is APPROVE on-chain. If a step REJECTS, retry
+          that step — do not deposit early.
         </p>
+      </div>
+      <div className="mb-6">
+        <NextStepBanner title={playbookGuide.title} body={playbookGuide.body} tone={playbookGuide.tone} />
       </div>
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <div className="glass rounded-3xl p-5 sm:p-8 space-y-4">
           <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} />
-          <Button className="w-full" disabled={!ready?.ok} loading={Boolean(busy?.includes("playbook"))} onClick={onCompile}>
+          <Button
+            className="w-full"
+            variant={!compile ? "default" : "outline"}
+            disabled={!isConnected || !live}
+            loading={Boolean(busy?.includes("playbook"))}
+            onClick={onCompile}
+          >
             Compile two-step envelope
           </Button>
-          <Button className="w-full" variant="outline" disabled={!compile} loading={Boolean(busy?.includes("Signing"))} onClick={onRegister}>
+          <Button
+            className="w-full"
+            variant={compile && !registerTx ? "default" : "outline"}
+            disabled={!compile}
+            loading={Boolean(busy?.includes("Signing"))}
+            onClick={onRegister}
+          >
             Register {registerTx ? `· ${short(registerTx)}` : ""}
           </Button>
         </div>
@@ -174,13 +252,15 @@ export function Playbook() {
             <p className="text-sm font-medium">1 · Allocate inside caps</p>
             <Button
               className="w-full"
+              variant={registerTx && !step1Approved ? "default" : "outline"}
               disabled={!registerTx}
               loading={busy === "Verifying allocate"}
               onClick={() => verifyStep("allocate", "replan", [])}
             >
-              Verify step 1
+              {step1 && !step1Approved ? "Retry step 1" : "Verify step 1"}
             </Button>
             {step1 && <VerdictStamp verdict={step1.result.verdict} />}
+            {step1 && <FailedRules checks={step1.result.checks} />}
           </div>
           <div className="glass rounded-3xl p-5 space-y-3">
             <p className="text-sm font-medium">2 · Settle</p>
@@ -189,17 +269,19 @@ export function Playbook() {
             )}
             <Button
               className="w-full"
+              variant={step1Approved && !step2Approved ? "default" : "outline"}
               disabled={!step1Approved}
               loading={busy === "Verifying settle"}
               onClick={() => verifyStep("settle", "replan", step1 ? [step1.result.actionHash] : [])}
             >
-              Verify step 2
+              {step2 && !step2Approved ? "Retry step 2" : "Verify step 2"}
             </Button>
             {step2 && <VerdictStamp verdict={step2.result.verdict} />}
+            {step2 && <FailedRules checks={step2.result.checks} />}
             <Button
               className="w-full"
-              variant="outline"
-              disabled={step2?.result.verdict !== "APPROVE"}
+              variant={step2Approved && !settleTx ? "default" : "outline"}
+              disabled={!step2Approved}
               loading={Boolean(busy?.includes("Settling"))}
               onClick={onSettle}
             >

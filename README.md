@@ -62,7 +62,7 @@ Do **not** redeploy `IntentRegistry` or `DemoVault`. Wave 4–5 added meter, con
 
 Verify price: `100000000000000` wei (0.0001 0G) per `/verify`, including `REJECT`.
 
-0G Mainnet (Aristotle, `16661`) registry/vault deploy is not done. Official Identity / Reputation addresses are in `.env.example`. See [docs/mainnet-deploy.md](docs/mainnet-deploy.md).
+0G Mainnet (Aristotle, `16661`) is not deployed. The runbook is [docs/mainnet-deploy.md](docs/mainnet-deploy.md) (`pnpm contracts:deploy:mainnet`, then wave45/wave6). Official Identity / Reputation addresses are in `.env.example`.
 
 ---
 

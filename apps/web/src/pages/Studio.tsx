@@ -12,6 +12,7 @@ import { targetChain } from "@/lib/chains";
 import { ConstraintChips } from "@/components/ConstraintChips";
 import { GiveFeedback } from "@/components/GiveFeedback";
 import { HashField } from "@/components/HashField";
+import { FailedRules, NextStepBanner } from "@/components/NextStep";
 import { PresentCertificate } from "@/components/PresentCertificate";
 import { Stepper } from "@/components/Stepper";
 import { VerdictStamp } from "@/components/VerdictStamp";
@@ -38,9 +39,9 @@ function vaultRevertMessage(err: unknown, verdict?: string): string {
   const text = err instanceof BaseError ? `${err.shortMessage} ${err.message}` : String(err);
   if (/IntentNotApproved/i.test(text)) {
     if (verdict && verdict !== "APPROVE") {
-      return "DemoVault reverted IntentNotApproved. Expected for REJECT/CHALLENGE — replan, verify APPROVE, then deposit.";
+      return "The vault refused this plan. That is correct while the stamp is REJECT or CHALLENGE. Press Replan, then Verify, until you see APPROVE.";
     }
-    return "DemoVault reverted IntentNotApproved. Register the intent and wait for an APPROVE attestation.";
+    return "The vault refused this deposit. Register the intent and wait for an APPROVE stamp first.";
   }
   if (/BindingMismatch/i.test(text)) {
     return "DemoVault reverted BindingMismatch. The 0G amount must match the amount bound at verify.";
@@ -389,16 +390,25 @@ export function Studio() {
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Gate</p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Human verify</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Compile, register, greedy-reject, then replan until APPROVE. Meter, reputation, and present live in the
-          session pane.
+          The vault moves funds only after a green APPROVE stamp. Greedy is meant to fail. After Replan you must
+          Verify again — a new plan is not a pass. Ignore deposit until APPROVE.
         </p>
       </div>
 
       <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
         <div className="glass rounded-3xl p-5 sm:p-8">
           <Stepper
-            steps={STEPS}
+            steps={STEPS.map((s) =>
+              s.id !== "proof"
+                ? s
+                : {
+                    ...s,
+                    label:
+                      verify?.result.verdict === "APPROVE" ? "Settle" : verify ? "Blocked" : "Proof",
+                  },
+            )}
             current={Math.max(stepIndex, 0)}
+            blocked={stage === "proof" && Boolean(verify && verify.result.verdict !== "APPROVE")}
             onSelect={(i) => {
               const next = STEPS[i];
               if (next && unlocked[next.id]) setStage(next.id);
@@ -519,6 +529,11 @@ export function Studio() {
                   Alignment {(verify.result.alignmentScore * 100).toFixed(1)}%
                   {verify.meter?.txHash ? ` · meter ${short(verify.meter.txHash)}` : ""}
                 </p>
+                {verify.result.verdict === "APPROVE" ? (
+                  <p className="text-xs text-primary">Next: Deposit. The vault will accept this attestation.</p>
+                ) : (
+                  <p className="text-xs text-challenge">Next: Replan, then Verify. Deposit stays locked.</p>
+                )}
                 <Link className="text-sm text-primary underline" to={`/proof/${verify.result.actionHash}`}>
                   Open certificate
                 </Link>
@@ -582,6 +597,11 @@ function IntentStep({
           INTENTOS compiles this into a committed envelope. The agent chooses how. Settlement does not.
         </p>
       </div>
+      <NextStepBanner
+        tone="wait"
+        title="Compile the sample intent"
+        body="Connect the wallet, paste or insert the $5,000 text, then Compile. This only locks the rules — nothing is deposited yet."
+      />
       <Field name="intent">
         <FieldLabel>Intent</FieldLabel>
         <Textarea
@@ -672,6 +692,15 @@ function AnchorStep({
           MetaMask must confirm the signature — if it flags this Vercel URL, that is their phishing list, not a contract bug.
         </p>
       </div>
+      <NextStepBanner
+        tone="wait"
+        title={registerTx ? "Continue to the agent" : "Sign registerIntent"}
+        body={
+          registerTx
+            ? "The envelope is on-chain. Next the agent proposes a plan. Still no deposit."
+            : "Approve the MetaMask signature. Funds do not move on this step."
+        }
+      />
       <div className="divide-y divide-border rounded-xl border border-border">
         <ReviewRow label="Intent hash" value={short(compile.intentHash, 6)} />
         <ReviewRow label="Model" value={compile.usedModel ?? "—"} />
@@ -745,22 +774,31 @@ function AgentStep({
         <p className="text-xs font-medium text-primary">Autonomous proposal</p>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">Choose how the agent plans</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Both calls hit 0G Compute. Greedy usually violates the envelope. Replan asks the same model to obey it.
+          Both calls hit 0G Compute. Greedy is the fail demo. Replan is the path toward APPROVE. Neither one deposits.
         </p>
       </div>
+      <NextStepBanner
+        tone="wait"
+        title={action ? "Continue to Verify" : steer === "greedy" ? "Ask for a greedy plan first" : "Ask for a constrained replan"}
+        body={
+          action
+            ? "A proposal is not a pass. Verify it next. Greedy should REJECT. Replan still needs a green APPROVE before deposit."
+            : "Start with Greedy to see the vault refuse, then come back and Replan. Or skip straight to Replan if you only want APPROVE."
+        }
+      />
       <RadioGroup className="gap-3" value={steer} onValueChange={(v) => setSteer(v as Mode)}>
         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-accent/50 has-[[data-state=checked]]:border-primary/40 has-[[data-state=checked]]:bg-accent/50">
           <Radio className="mt-0.5" value="greedy" />
           <div>
-            <p className="text-sm font-medium">Greedy</p>
-            <p className="text-xs text-muted-foreground">Maximize yield. May break capital, duration, or leverage.</p>
+            <p className="text-sm font-medium">Greedy — expect REJECT</p>
+            <p className="text-xs text-muted-foreground">Maximize yield. Usually breaks a hard rule. Deposit will fail on purpose.</p>
           </div>
         </label>
         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-accent/50 has-[[data-state=checked]]:border-primary/40 has-[[data-state=checked]]:bg-accent/50">
           <Radio className="mt-0.5" value="replan" />
           <div>
-            <p className="text-sm font-medium">Replan</p>
-            <p className="text-xs text-muted-foreground">Stay inside the hard constraints. This is the path to APPROVE.</p>
+            <p className="text-sm font-medium">Replan — try for APPROVE</p>
+            <p className="text-xs text-muted-foreground">Obey capital, duration, leverage, and low risk. You still have to Verify after this.</p>
           </div>
         </label>
       </RadioGroup>
@@ -783,7 +821,7 @@ function AgentStep({
           Back
         </Button>
         <Button className="flex-1" disabled={!live} loading={Boolean(busy)} onClick={() => onPropose(steer)}>
-          Ask the agent
+          {steer === "replan" ? "Ask for a replan" : "Ask for a greedy plan"}
         </Button>
       </div>
       {action && (
@@ -837,31 +875,55 @@ function VerifyStep({
           minutes to index those receipts.
         </p>
       </div>
+      <NextStepBanner
+        tone={mode === "replan" ? "wait" : "stop"}
+        title={
+          mode === "replan"
+            ? "Verify this replan — it is not approved yet"
+            : "Verify the greedy plan — expect REJECT"
+        }
+        body={
+          mode === "replan"
+            ? "Replan only wrote a new proposal. Press Verify. Deposit unlocks only if the stamp comes back APPROVE. If it is REJECT or CHALLENGE, replan again."
+            : "This is the fail demo. After REJECT, do not deposit. Press Replan, then Verify again."
+        }
+      />
       {action && (
         <p className="text-xs text-muted-foreground">
-          Verifying the {mode === "replan" ? "replanned" : "greedy"} plan for {action.params.protocol}.
+          Next check: the {mode === "replan" ? "replanned" : "greedy"} plan for {action.params.protocol} · risk{" "}
+          {action.params.riskClass} · {action.params.capital} {action.params.currency}.
         </p>
       )}
       <Field name="amount">
         <FieldLabel>Settlement amount (0G)</FieldLabel>
         <Input value={amountOg} onChange={(e) => setAmountOg(e.target.value)} inputMode="decimal" />
       </Field>
-      <label className="flex items-start gap-2 text-sm">
-        <input
-          type="checkbox"
-          className="mt-1"
-          checked={bindExecutor}
-          disabled={!executorReady}
-          onChange={(e) => setBindExecutor(e.target.checked)}
-        />
-        <span>
-          Bind IntentExecutor instead of DemoVault
-          <span className="mt-0.5 block text-xs text-muted-foreground">
-            One verify = one binding. Leave unchecked for the judge DemoVault revert. Requires a Wave 6 executor
-            deploy.
+      <details className="rounded-xl border border-white/10 px-4 py-2 text-xs text-muted-foreground">
+        <summary className="cursor-pointer select-none text-sm font-medium text-foreground/80">
+          Optional Beat 2 · IntentExecutor
+        </summary>
+        <p className="mt-2 leading-relaxed">
+          Leave this off for Beat 1. DemoVault is the product: greedy reverts, replan APPROVE deposits. Checking this
+          binds Execute instead of Deposit and waits 15 minutes. One verify = one binding.
+        </p>
+        <label className="mt-3 flex items-start gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={bindExecutor}
+            disabled={!executorReady}
+            onChange={(e) => setBindExecutor(e.target.checked)}
+          />
+          <span>
+            Bind IntentExecutor instead of DemoVault
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              {executorReady
+                ? "Live on Galileo. Use only after Beat 1 deposit works."
+                : "The contract is already on Galileo. This API session has no executor address, so Beat 1 DemoVault is the only settlement."}
+            </span>
           </span>
-        </span>
-      </label>
+        </label>
+      </details>
       {!registered && (
         <p className="text-xs text-challenge">
           Anchor the intent first. recordVerification cannot run until registerIntent lands.
@@ -880,7 +942,7 @@ function VerifyStep({
           loading={Boolean(busy)}
           onClick={onVerify}
         >
-          Verify on 0G
+          {mode === "replan" ? "Verify this replan" : "Verify greedy plan"}
         </Button>
       </div>
       {verify && (
@@ -962,9 +1024,29 @@ function ProofStep({
     <div className="space-y-5">
       <div>
         <p className="text-xs font-medium text-primary">Evidence & settlement</p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-tight">Review, then settle</h2>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight">
+          {verify.result.verdict === "APPROVE" ? "Cleared — you can deposit" : "Blocked — do not deposit"}
+        </h2>
       </div>
+      {verify.result.verdict === "APPROVE" ? (
+        <NextStepBanner
+          tone="go"
+          title="Press Deposit"
+          body="The oracle attested APPROVE. The vault will accept this amount and action hash."
+        />
+      ) : (
+        <NextStepBanner
+          tone="stop"
+          title={
+            verify.result.verdict === "CHALLENGE"
+              ? "CHALLENGE is not a pass. Press Replan."
+              : "REJECT is the gate working. Press Replan."
+          }
+          body="Try deposit anyway will fail in MetaMask on purpose. Replan writes a new plan, then you must Verify again. Repeat until the stamp is APPROVE."
+        />
+      )}
       <VerdictStamp verdict={verify.result.verdict} />
+      <FailedRules checks={verify.result.checks} />
       <LayerBreakdown verify={verify} />
       <div className="divide-y divide-border rounded-xl border border-border">
         <ReviewRow label="Verdict" value={verify.result.verdict} />
@@ -989,7 +1071,7 @@ function ProofStep({
       )}
       {verify.result.verdict !== "APPROVE" && (
         <p className="text-xs text-muted-foreground">
-          Deposit must revert with IntentNotApproved. That revert is the product. Replan and verify until APPROVE.
+          The vault is locked until APPROVE. Replan is the next action — not deposit.
         </p>
       )}
       {settleErr && (
@@ -1008,7 +1090,7 @@ function ProofStep({
         </Button>
         {verify.result.verdict !== "APPROVE" ? (
           <Button className="flex-1" onClick={onReplan}>
-            Replan
+            Replan, then verify
           </Button>
         ) : verify.executor ? (
           <Button className="flex-1" loading={Boolean(busy)} onClick={onExecute}>
@@ -1027,14 +1109,31 @@ function ProofStep({
         </p>
       )}
       {verify.result.verdict !== "APPROVE" && (
-        <Button className="w-full" variant="outline" loading={Boolean(busy)} onClick={onSettle}>
-          Try deposit anyway
-        </Button>
+        <details className="rounded-xl border border-white/10 px-4 py-2 text-xs text-muted-foreground">
+          <summary className="cursor-pointer select-none font-medium text-foreground/80">
+            Judge demo: show the vault revert
+          </summary>
+          <p className="mt-2 leading-relaxed">
+            This calls DemoVault.deposit while the stamp is not APPROVE. MetaMask will show a failed interaction.
+            That revert is the product — it is not a bug.
+          </p>
+          <Button className="mt-3 w-full" variant="outline" size="sm" loading={Boolean(busy)} onClick={onSettle}>
+            Show IntentNotApproved revert
+          </Button>
+        </details>
       )}
       {verify.result.verdict === "APPROVE" && verify.executor && (
-        <Button className="w-full" variant="outline" loading={Boolean(busy)} onClick={onSettle}>
-          Try DemoVault deposit anyway
-        </Button>
+        <details className="rounded-xl border border-white/10 px-4 py-2 text-xs text-muted-foreground">
+          <summary className="cursor-pointer select-none font-medium text-foreground/80">
+            Judge demo: DemoVault on an executor binding
+          </summary>
+          <p className="mt-2 leading-relaxed">
+            This attestation is bound to IntentExecutor. DemoVault.deposit should revert BindingMismatch.
+          </p>
+          <Button className="mt-3 w-full" variant="outline" size="sm" loading={Boolean(busy)} onClick={onSettle}>
+            Show BindingMismatch revert
+          </Button>
+        </details>
       )}
       <GiveFeedback
         agentId={agentId}
@@ -1103,18 +1202,29 @@ function LayerBreakdown({ verify }: { verify: VerifyOut }) {
         </li>
       </ul>
       <ul className="divide-y divide-border rounded-xl border border-border">
-        {verify.result.checks.map((c, i) => (
-          <li key={`${c.constraint}-${i}`} className="flex items-center justify-between px-4 py-2.5 text-sm">
-            <span>{c.constraint}</span>
-            <span
-              className={
-                c.result === "FAIL" ? "text-destructive" : c.result === "PASS" ? "text-primary" : "text-muted-foreground"
-              }
-            >
-              {c.result}
-            </span>
-          </li>
-        ))}
+        {[...verify.result.checks]
+          .sort((a, b) => Number(b.result === "FAIL") - Number(a.result === "FAIL"))
+          .map((c, i) => (
+            <li key={`${c.constraint}-${i}`} className="px-4 py-2.5 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span>{c.constraint}</span>
+                <span
+                  className={
+                    c.result === "FAIL"
+                      ? "text-destructive"
+                      : c.result === "PASS"
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                  }
+                >
+                  {c.result}
+                </span>
+              </div>
+              {c.result === "FAIL" && c.message ? (
+                <p className="mt-1 text-xs text-muted-foreground">{c.message}</p>
+              ) : null}
+            </li>
+          ))}
       </ul>
     </div>
   );

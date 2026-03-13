@@ -6,10 +6,13 @@ export function Stepper({
   steps,
   current,
   onSelect,
+  blocked,
 }: {
   steps: { id: string; label: string }[];
   current: number;
   onSelect?: (index: number) => void;
+  /** Current step is a stop, not a success — e.g. REJECT/CHALLENGE on Proof. */
+  blocked?: boolean;
 }) {
   const progress = steps.length > 1 ? (current / (steps.length - 1)) * 100 : 0;
 
@@ -38,7 +41,8 @@ export function Stepper({
                     className={cn(
                       "flex size-6 items-center justify-center rounded-full bg-card font-semibold text-xs transition-colors",
                       done && "bg-primary text-primary-foreground",
-                      active && "border-2 border-primary text-primary",
+                      active && !blocked && "border-2 border-primary text-primary",
+                      active && blocked && "border-2 border-challenge text-challenge",
                       !done && !active && "border border-border text-muted-foreground",
                     )}
                   >
@@ -47,7 +51,7 @@ export function Stepper({
                   <span
                     className={cn(
                       "text-[10px] font-medium sm:text-xs",
-                      active ? "text-foreground" : "text-muted-foreground",
+                      active && blocked ? "text-challenge" : active ? "text-foreground" : "text-muted-foreground",
                     )}
                   >
                     {step.label}

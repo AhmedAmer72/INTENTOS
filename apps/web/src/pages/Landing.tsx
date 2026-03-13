@@ -39,7 +39,7 @@ const STEPS = [
   { n: "02", title: "Anchor the hash", body: "EIP-712 sign the envelope. Only the keccak goes on IntentRegistry.", tone: "plum" },
   { n: "03", title: "Let the agent plan", body: "Greedy maximize yield, or replan inside the envelope. Both calls are live 0G Compute.", tone: "royal" },
   { n: "04", title: "Verify four layers", body: "Rules, semantics, consistency, storage. Stamp APPROVE, REJECT, or CHALLENGE.", tone: "gold" },
-  { n: "05", title: "Settle or revert", body: "Approved actions deposit. Violations revert on 0G Chain — explorers included.", tone: "rose" },
+  { n: "05", title: "Settle or revert", body: "Only APPROVE can deposit. REJECT and CHALLENGE revert on 0G — that revert is the product.", tone: "rose" },
 ];
 
 export function Landing() {

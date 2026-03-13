@@ -8,6 +8,7 @@ import { INTENT_BOUNTY_ABI, INTENT_REGISTRY_ABI } from "@/lib/abi";
 import { targetChain } from "@/lib/chains";
 import { VerdictStamp } from "@/components/VerdictStamp";
 import { GiveFeedback } from "@/components/GiveFeedback";
+import { FailedRules, NextStepBanner } from "@/components/NextStep";
 import { PresentCertificate } from "@/components/PresentCertificate";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,9 +16,101 @@ import type { Action, CompileOut, Envelope, Meta, Ready, VerifyOut } from "@/lib
 import { DEMO_PLACEHOLDER } from "@/lib/types";
 
 type Mode = "greedy" | "replan";
+type MarketNext = "connect" | "compile" | "register" | "greedy" | "verify" | "replan" | "fund" | "claim" | "done";
+
+function marketGuide(args: {
+  connected: boolean;
+  live: boolean;
+  compile: boolean;
+  registered: boolean;
+  hasAction: boolean;
+  mode: Mode | null;
+  verdict?: VerifyOut["result"]["verdict"];
+  funded: boolean;
+  claimed: boolean;
+}): { id: MarketNext; title: string; body: string; tone: "go" | "wait" | "stop" } {
+  if (!args.connected) {
+    return {
+      id: "connect",
+      tone: "wait",
+      title: "Connect a wallet",
+      body: "Use Connect in the header. Market compile and bounty calls need a Galileo account.",
+    };
+  }
+  if (!args.live) {
+    return {
+      id: "compile",
+      tone: "stop",
+      title: "The live rail is not ready",
+      body: "Open Console and wait until required checks are green, then come back.",
+    };
+  }
+  if (!args.compile) {
+    return {
+      id: "compile",
+      tone: "wait",
+      title: "Compile as Agent A",
+      body: "This publishes the requirement. Nothing is paid yet.",
+    };
+  }
+  if (!args.registered) {
+    return {
+      id: "register",
+      tone: "wait",
+      title: "Register the envelope",
+      body: "Sign registerIntent. Agent B cannot be verified until this lands.",
+    };
+  }
+  if (!args.hasAction) {
+    return {
+      id: "greedy",
+      tone: "wait",
+      title: "Ask Agent B for a greedy offer",
+      body: "Greedy is meant to REJECT. After verify, come back and press B replan.",
+    };
+  }
+  if (!args.verdict) {
+    return {
+      id: "verify",
+      tone: args.mode === "replan" ? "wait" : "stop",
+      title: args.mode === "replan" ? "Verify this replan — not a pass yet" : "Verify the greedy offer — expect REJECT",
+      body: "An offer is not approval. Fund and claim stay locked until the stamp is APPROVE.",
+    };
+  }
+  if (args.verdict !== "APPROVE") {
+    return {
+      id: "replan",
+      tone: "stop",
+      title: "Offer blocked. Press B replan, then Verify again.",
+      body: "Do not fund the bounty. REJECT and CHALLENGE cannot be claimed. Repeat replan + verify until APPROVE.",
+    };
+  }
+  if (!args.funded) {
+    return {
+      id: "fund",
+      tone: "go",
+      title: "Fund the bounty",
+      body: "This offer is APPROVE. Lock 0.0001 0G on IntentBounty, then claim.",
+    };
+  }
+  if (!args.claimed) {
+    return {
+      id: "claim",
+      tone: "go",
+      title: "Claim the bounty",
+      body: "The escrow is funded. Claim pays Agent B for the approved offer.",
+    };
+  }
+  return {
+    id: "done",
+    tone: "go",
+    title: "A2A pay finished",
+    body: "Open the certificate if you want the explorer links. Give feedback from a wallet that does not own agent 361.",
+  };
+}
 
 export function Market() {
-  const { address, ensureChain, client, publicClient } = useWallet();
+  const { address, isConnected, ensureChain, client, publicClient } = useWallet();
   const [ready, setReady] = useState<Ready | null>(null);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [text, setText] = useState(DEMO_PLACEHOLDER);
@@ -33,6 +126,19 @@ export function Market() {
 
   const envelope: Envelope | null = compile?.envelope ?? null;
   const explorer = meta?.explorer ?? ready?.explorer;
+  const live = ready?.ok !== false;
+  const guide = marketGuide({
+    connected: isConnected,
+    live,
+    compile: Boolean(compile),
+    registered: Boolean(registerTx),
+    hasAction: Boolean(action),
+    mode,
+    verdict: verify?.result.verdict,
+    funded: Boolean(bountyTx),
+    claimed: Boolean(claimTx),
+  });
+  const approved = verify?.result.verdict === "APPROVE";
 
   useEffect(() => {
     api<Ready>("/ready").then(setReady).catch(() => setReady(null));
@@ -184,23 +290,30 @@ export function Market() {
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Market</p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Machines pay the same gate</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Agent A publishes a requirement. Agent B offers greedy (expect REJECT) then replans (expect APPROVE).
-          Router deposits pay Compute (Payment Layer). IntentBounty is A2A Pay after APPROVE.
+          Same gate as Studio, but Agent B pays after APPROVE. Greedy should fail. Replan, then verify again.
+          Fund and claim stay locked until the stamp is green.
         </p>
       </div>
       <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
         <div className="glass rounded-3xl p-5 sm:p-8">
-          <p className="font-mono text-[11px] text-muted-foreground">
+          <NextStepBanner title={guide.title} body={guide.body} tone={guide.tone} />
+          <p className="mt-4 font-mono text-[11px] text-muted-foreground">
             A {short(meta?.requirementAgentId)} · B {short(meta?.agentId)}
           </p>
           <div className="mt-6 space-y-4">
             <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} />
-            <Button className="w-full" disabled={!ready?.ok} loading={busy === "Compiling Agent A requirement"} onClick={onCompile}>
+            <Button
+              className="w-full"
+              variant={guide.id === "compile" ? "default" : "outline"}
+              disabled={!isConnected || !live}
+              loading={busy === "Compiling Agent A requirement"}
+              onClick={onCompile}
+            >
               1. Compile as Agent A
             </Button>
             <Button
               className="w-full"
-              variant="outline"
+              variant={guide.id === "register" ? "default" : "outline"}
               disabled={!compile}
               loading={busy === "Signing Agent A envelope"}
               onClick={onRegister}
@@ -208,25 +321,45 @@ export function Market() {
               2. Register envelope {registerTx ? `· ${short(registerTx)}` : ""}
             </Button>
             <div className="grid grid-cols-2 gap-3">
-              <Button disabled={!registerTx} loading={Boolean(busy?.includes("maximizing"))} onClick={() => onOffer("greedy")}>
+              <Button
+                variant={guide.id === "greedy" ? "default" : "outline"}
+                disabled={!registerTx}
+                loading={Boolean(busy?.includes("maximizing"))}
+                onClick={() => onOffer("greedy")}
+              >
                 3. B greedy
               </Button>
-              <Button disabled={!registerTx} loading={Boolean(busy?.includes("replanning"))} onClick={() => onOffer("replan")}>
+              <Button
+                variant={guide.id === "replan" ? "default" : "outline"}
+                disabled={!registerTx}
+                loading={Boolean(busy?.includes("replanning"))}
+                onClick={() => onOffer("replan")}
+              >
                 B replan
               </Button>
             </div>
             {action && (
               <p className="text-xs text-muted-foreground">
-                {mode} · {action.params.protocol} · {action.params.capital} {action.params.currency}
+                {mode} · {action.params.protocol} · {action.params.capital} {action.params.currency} · risk{" "}
+                {action.params.riskClass}
               </p>
             )}
-            <Button className="w-full" disabled={!action} loading={Boolean(busy?.includes("A2A"))} onClick={onVerify}>
-              4. Verify A2A
-            </Button>
             <Button
               className="w-full"
-              variant="outline"
-              disabled={!verify || !meta?.bounty}
+              variant={guide.id === "verify" ? "default" : "outline"}
+              disabled={!action}
+              loading={Boolean(busy?.includes("A2A"))}
+              onClick={onVerify}
+            >
+              4. Verify A2A
+            </Button>
+            {!approved && verify && (
+              <p className="text-xs text-challenge">Fund and claim stay locked until APPROVE.</p>
+            )}
+            <Button
+              className="w-full"
+              variant={guide.id === "fund" ? "default" : "outline"}
+              disabled={!approved || !meta?.bounty}
               loading={busy === "Funding IntentBounty"}
               onClick={onFund}
             >
@@ -234,8 +367,8 @@ export function Market() {
             </Button>
             <Button
               className="w-full"
-              variant="outline"
-              disabled={!bountyTx || verify?.result.verdict !== "APPROVE"}
+              variant={guide.id === "claim" ? "default" : "outline"}
+              disabled={!bountyTx || !approved}
               loading={busy === "Claiming IntentBounty"}
               onClick={onClaim}
             >
@@ -248,6 +381,7 @@ export function Market() {
           {verify ? (
             <div className="mt-4 space-y-4">
               <VerdictStamp verdict={verify.result.verdict} />
+              <FailedRules checks={verify.result.checks} />
               <p className="text-sm text-muted-foreground">
                 Alignment {(verify.result.alignmentScore * 100).toFixed(1)}% · meter{" "}
                 {verify.meter?.ok ? short(verify.meter.txHash) : verify.meter?.skipped ? "skipped" : "unpaid"}
@@ -275,7 +409,8 @@ export function Market() {
             </div>
           ) : (
             <p className="mt-3 text-sm text-muted-foreground">
-              Run greedy first — it should REJECT. Replan, then verify again.
+              Follow the highlighted button. Greedy first, then replan after REJECT. Bounty buttons stay dim until
+              APPROVE.
             </p>
           )}
         </aside>

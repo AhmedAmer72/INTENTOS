@@ -18,6 +18,10 @@ const CARDS = [
     title: "Intent becomes an envelope",
     body: "Natural language is compiled on 0G Compute into hard caps, duration, leverage, and allowed actions. Ambiguity is a CHALLENGE — never a guessed number.",
     points: ["Structured constraints", "No silent defaults", "Hash-ready document"],
+    tone: "orchid",
+    accent: "text-primary",
+    badge: "border-primary/30 bg-ink text-primary",
+    dot: "bg-primary",
   },
   {
     id: "features-verify",
@@ -26,6 +30,10 @@ const CARDS = [
     title: "Four layers, fail-closed",
     body: "Deterministic rules run first. TEE-backed semantics may only downgrade APPROVE. Evidence is uploaded to 0G Storage — the merkle root is what gets attested.",
     points: ["Layer 1 cannot be overruled", "TEE-backed Layer 2", "Storage roots, not local keccak"],
+    tone: "royal",
+    accent: "text-[#D4A8FF]",
+    badge: "border-[#9B4FE0]/40 bg-[#160822] text-[#D4A8FF]",
+    dot: "bg-[#9B4FE0]",
   },
   {
     id: "features-settle",
@@ -34,13 +42,18 @@ const CARDS = [
     title: "The revert is the product",
     body: "DemoVault.deposit reads isApproved. A technically valid transfer that violates intent fails with IntentNotApproved. Every verdict mints a public certificate.",
     points: ["IntentNotApproved on greedy plans", "Binding over msg.value", "Portable proof pages"],
+    tone: "rose",
+    accent: "text-destructive",
+    badge: "border-destructive/35 bg-[#160822] text-destructive",
+    dot: "bg-destructive",
   },
 ];
 
 export function Features11({ className }: { className?: string }) {
   const reduce = useReducedMotion();
   return (
-    <section id="features" className={cn("mx-auto max-w-6xl px-5 py-24", className)}>
+    <section id="features" className={cn("landing-band landing-band-orchid border-y border-white/5", className)}>
+      <div className="mx-auto max-w-6xl px-5 py-24">
       <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-16">
         <Reveal className="lg:sticky lg:top-28 lg:col-span-5" y={20}>
           <p className="text-xs font-medium text-primary">Capabilities</p>
@@ -83,29 +96,29 @@ export function Features11({ className }: { className?: string }) {
               <StaggerItem key={card.id}>
                 <motion.article
                   id={card.id}
-                  className="landing-card glass scroll-mt-28 rounded-3xl p-6 sm:p-7"
+                  className={`landing-card glass landing-card-${card.tone} scroll-mt-28 rounded-3xl p-6 sm:p-7`}
                   whileHover={{ y: -6 }}
                   transition={{ duration: 0.28, ease: revealEase }}
                 >
                   <div className="flex items-start gap-4">
-                    <span className="relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-ink font-mono text-xs text-primary">
+                    <span className={`relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full border font-mono text-xs ${card.badge}`}>
                       {card.index}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-primary">{card.kicker}</p>
+                      <p className={`text-xs font-medium ${card.accent}`}>{card.kicker}</p>
                       <h3 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{card.title}</h3>
                       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{card.body}</p>
                       <ul className="mt-4 space-y-1.5">
                         {card.points.map((point) => (
                           <li key={point} className="flex gap-2 text-sm text-foreground/85">
-                            <span className="mt-2 size-1 shrink-0 rounded-full bg-primary" />
+                            <span className={`mt-2 size-1 shrink-0 rounded-full ${card.dot}`} />
                             {point}
                           </li>
                         ))}
                       </ul>
                       <Link
                         to="/studio"
-                        className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                        className={`mt-5 inline-flex items-center gap-1 text-sm font-medium hover:underline ${card.accent}`}
                       >
                         Run this in the studio
                         <ArrowUpRight className="size-3.5" />
@@ -117,6 +130,7 @@ export function Features11({ className }: { className?: string }) {
             ))}
           </Stagger>
         </div>
+      </div>
       </div>
     </section>
   );

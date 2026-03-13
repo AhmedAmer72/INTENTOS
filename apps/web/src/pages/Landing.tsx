@@ -35,11 +35,11 @@ function ArtisticSlogan() {
 }
 
 const STEPS = [
-  { n: "01", title: "Write the intent", body: "What must remain true after the agent acts — in English, not a policy DSL." },
-  { n: "02", title: "Anchor the hash", body: "EIP-712 sign the envelope. Only the keccak goes on IntentRegistry." },
-  { n: "03", title: "Let the agent plan", body: "Greedy maximize yield, or replan inside the envelope. Both calls are live 0G Compute." },
-  { n: "04", title: "Verify four layers", body: "Rules, semantics, consistency, storage. Stamp APPROVE, REJECT, or CHALLENGE." },
-  { n: "05", title: "Settle or revert", body: "Approved actions deposit. Violations revert on 0G Chain — explorers included." },
+  { n: "01", title: "Write the intent", body: "What must remain true after the agent acts — in English, not a policy DSL.", tone: "orchid" },
+  { n: "02", title: "Anchor the hash", body: "EIP-712 sign the envelope. Only the keccak goes on IntentRegistry.", tone: "plum" },
+  { n: "03", title: "Let the agent plan", body: "Greedy maximize yield, or replan inside the envelope. Both calls are live 0G Compute.", tone: "royal" },
+  { n: "04", title: "Verify four layers", body: "Rules, semantics, consistency, storage. Stamp APPROVE, REJECT, or CHALLENGE.", tone: "gold" },
+  { n: "05", title: "Settle or revert", body: "Approved actions deposit. Violations revert on 0G Chain — explorers included.", tone: "rose" },
 ];
 
 export function Landing() {
@@ -148,6 +148,7 @@ function Products() {
       to: "/studio",
       cta: "Open studio",
       icon: Shield,
+      tone: "orchid",
     },
     {
       k: "Meter",
@@ -156,6 +157,7 @@ function Products() {
       to: "/console",
       cta: "Usage console",
       icon: Gauge,
+      tone: "plum",
     },
     {
       k: "Market",
@@ -164,46 +166,49 @@ function Products() {
       to: "/market",
       cta: "Open market",
       icon: LayoutGrid,
+      tone: "royal",
     },
   ];
   return (
-    <section id="products" className="mx-auto max-w-6xl px-5 py-24">
-      <Reveal>
-        <p className="text-xs font-medium text-primary">Three products</p>
-        <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-          Gate. Meter. Market.
-        </h2>
-        <motion.div
-          className="mt-4 h-px max-w-40 origin-left bg-gradient-to-r from-primary to-transparent"
-          initial={{ scaleX: 0 }}
-          whileInView={{ scaleX: 1 }}
-          viewport={revealViewport}
-          transition={{ duration: 0.8, ease: revealEase, delay: 0.12 }}
-        />
-      </Reveal>
-      <Stagger className="mt-12 grid gap-4 md:grid-cols-3">
-        {items.map((item) => {
-          const Icon = item.icon;
-          return (
-            <StaggerItem key={item.k}>
-              <motion.div whileHover={{ y: -8 }} transition={{ duration: 0.28, ease: revealEase }}>
-                <Link to={item.to} className="landing-card glass group block rounded-3xl p-6">
-                  <span className="flex size-10 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
-                    <Icon className="size-4" />
-                  </span>
-                  <p className="mt-5 font-mono text-[11px] text-primary">{item.k}</p>
-                  <h3 className="mt-2 text-xl font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-                  <p className="mt-6 inline-flex items-center gap-1 text-sm text-primary">
-                    {item.cta}
-                    <ArrowUpRight className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
-                  </p>
-                </Link>
-              </motion.div>
-            </StaggerItem>
-          );
-        })}
-      </Stagger>
+    <section id="products" className="landing-band landing-band-plum border-y border-white/5">
+      <div className="mx-auto max-w-6xl px-5 py-24">
+        <Reveal>
+          <p className="text-xs font-medium text-primary">Three products</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            Gate. Meter. Market.
+          </h2>
+          <motion.div
+            className="mt-4 h-px max-w-40 origin-left bg-gradient-to-r from-primary to-transparent"
+            initial={{ scaleX: 0 }}
+            whileInView={{ scaleX: 1 }}
+            viewport={revealViewport}
+            transition={{ duration: 0.8, ease: revealEase, delay: 0.12 }}
+          />
+        </Reveal>
+        <Stagger className="mt-12 grid gap-4 md:grid-cols-3">
+          {items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <StaggerItem key={item.k}>
+                <motion.div whileHover={{ y: -8 }} transition={{ duration: 0.28, ease: revealEase }}>
+                  <Link to={item.to} className={`landing-card glass landing-card-${item.tone} group block rounded-3xl p-6`}>
+                    <span className="flex size-10 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+                      <Icon className="size-4" />
+                    </span>
+                    <p className="mt-5 font-mono text-[11px] text-primary">{item.k}</p>
+                    <h3 className="mt-2 text-xl font-semibold">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+                    <p className="mt-6 inline-flex items-center gap-1 text-sm text-primary">
+                      {item.cta}
+                      <ArrowUpRight className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+                    </p>
+                  </Link>
+                </motion.div>
+              </StaggerItem>
+            );
+          })}
+        </Stagger>
+      </div>
     </section>
   );
 }
@@ -211,7 +216,7 @@ function Products() {
 function How() {
   const reduce = useReducedMotion();
   return (
-    <section id="how" className="border-y border-white/5 bg-gradient-to-b from-ink-2/30 to-transparent">
+    <section id="how" className="landing-band landing-band-royal border-y border-white/5">
       <div className="mx-auto max-w-6xl px-5 py-24">
         <Reveal>
           <p className="text-xs font-medium text-primary">The ritual</p>
@@ -233,7 +238,7 @@ function How() {
             {STEPS.map((s) => (
               <StaggerItem key={s.n}>
                 <motion.article
-                  className="landing-card glass block rounded-3xl p-5 sm:p-6"
+                  className={`landing-card glass landing-card-${s.tone} block rounded-3xl p-5 sm:p-6`}
                   whileHover={{ y: -6 }}
                   transition={{ duration: 0.28, ease: revealEase }}
                 >
@@ -253,9 +258,10 @@ function How() {
 function Gate() {
   const reduce = useReducedMotion();
   return (
-    <section id="gate" className="mx-auto max-w-6xl px-5 py-24">
+    <section id="gate" className="landing-band landing-band-ink">
+      <div className="mx-auto max-w-6xl px-5 py-24">
       <motion.div
-        className="glass landing-card relative overflow-hidden rounded-3xl px-6 py-14 sm:px-14"
+        className="glass landing-card landing-card-rose relative overflow-hidden rounded-3xl px-6 py-14 sm:px-14"
         initial={reduce ? false : { opacity: 0, y: 36, scale: 0.98 }}
         whileInView={{ opacity: 1, y: 0, scale: 1 }}
         viewport={revealViewport}
@@ -290,6 +296,7 @@ function Gate() {
           </a>
         </div>
       </motion.div>
+      </div>
     </section>
   );
 }

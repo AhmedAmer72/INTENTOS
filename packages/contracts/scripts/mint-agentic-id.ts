@@ -7,20 +7,40 @@ import hre from "hardhat";
 
 loadEnv({ path: resolve(__dirname, "../../../.env") });
 
-const INDEXER = process.env.ZEROG_STORAGE_INDEXER_TESTNET ?? "https://indexer-storage-testnet-turbo.0g.ai";
-const RPC = process.env.ZEROG_TESTNET_RPC ?? "https://evmrpc-testnet.0g.ai";
+function storageEndpoints() {
+  const mainnet = hre.network.name === "mainnet";
+  return {
+    indexer: mainnet
+      ? (process.env.ZEROG_STORAGE_INDEXER_MAINNET ?? "https://indexer-storage-turbo.0g.ai")
+      : (process.env.ZEROG_STORAGE_INDEXER_TESTNET ?? "https://indexer-storage-testnet-turbo.0g.ai"),
+    rpc: mainnet
+      ? (process.env.ZEROG_MAINNET_RPC ?? "https://evmrpc.0g.ai")
+      : (process.env.ZEROG_TESTNET_RPC ?? "https://evmrpc-testnet.0g.ai"),
+  };
+}
 
-async function uploadCipher(privateKey: string, data: Buffer): Promise<string> {
+function agentIdNumber(): number {
+  const raw = process.env.AGENT_ID ?? "";
+  if (!raw) {
+    if (hre.network.name === "galileo") return 361;
+    throw new Error("AGENT_ID is required in Agentic ID metadata (mainnet id from register-agent).");
+  }
+  const n = raw.startsWith("0x") ? Number(BigInt(raw)) : Number(raw);
+  if (!Number.isFinite(n)) throw new Error("AGENT_ID must be a decimal or 0x hex id.");
+  return n;
+}
+
+async function uploadCipher(privateKey: string, data: Buffer, indexerUrl: string, rpc: string): Promise<string> {
   const { Indexer, MemData } = await import("@0gfoundation/0g-storage-ts-sdk");
   const { ethers } = await import("ethers");
-  const indexer = new Indexer(INDEXER);
-  const signer = new ethers.Wallet(privateKey, new ethers.JsonRpcProvider(RPC));
+  const indexer = new Indexer(indexerUrl);
+  const signer = new ethers.Wallet(privateKey, new ethers.JsonRpcProvider(rpc));
   const file = new MemData(data);
   const [tree, treeErr] = await file.merkleTree();
   if (treeErr) throw new Error(String(treeErr));
   const rootHash = tree?.rootHash();
   if (!rootHash) throw new Error("merkle tree produced no root hash");
-  const [, uploadErr] = await indexer.upload(file, RPC, signer);
+  const [, uploadErr] = await indexer.upload(file, rpc, signer);
   if (uploadErr) throw new Error(String(uploadErr));
   return rootHash.startsWith("0x") ? rootHash : `0x${rootHash}`;
 }
@@ -41,8 +61,9 @@ async function main() {
   if (!key) throw new Error("DEPLOYER_PRIVATE_KEY is required to pay 0G Storage and mint");
 
   const [deployer] = await hre.ethers.getSigners();
+  const { indexer, rpc } = storageEndpoints();
   const metadata = {
-    agentId: 361,
+    agentId: agentIdNumber(),
     name: "INTENTOS Reference Yield Agent",
     model: "qwen2.5-omni",
     systemPromptHash: hre.ethers.keccak256(hre.ethers.toUtf8Bytes("intentos-reference-agent")),
@@ -52,7 +73,7 @@ async function main() {
   const metadataHash = hre.ethers.keccak256(plaintext);
   const { blob, key: aesKey } = encrypt(plaintext);
   console.log("Uploading encrypted metadata to 0G Storage…");
-  const encryptedURI = await uploadCipher(key, blob);
+  const encryptedURI = await uploadCipher(key, blob, indexer, rpc);
   console.log("encryptedURI", encryptedURI);
 
   const nft = await hre.ethers.getContractAt("IntentosAgenticId", address);
@@ -73,7 +94,7 @@ async function main() {
     : deployer.address;
   await (await nft.authorizeUsage(minted, oracle, "0x01")).wait();
 
-  const file = resolve(__dirname, "../deployments/galileo.json");
+  const file = resolve(__dirname, "../deployments", `${hre.network.name}.json`);
   const prev = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
   writeFileSync(
     file,

@@ -2,6 +2,7 @@ import { config as loadEnv } from "dotenv";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import hre from "hardhat";
+import { waitDeployed } from "./wait-deployed";
 
 loadEnv({ path: resolve(__dirname, "../../../.env") });
 
@@ -18,14 +19,12 @@ async function main() {
 
   const Registry = await hre.ethers.getContractFactory("IntentRegistry");
   const registry = await Registry.deploy(deployer.address, oracleAddress);
-  await registry.waitForDeployment();
-  const registryAddress = await registry.getAddress();
+  const registryAddress = await waitDeployed(registry, "IntentRegistry");
   console.log("IntentRegistry", registryAddress);
 
   const Vault = await hre.ethers.getContractFactory("DemoVault");
   const vault = await Vault.deploy(registryAddress);
-  await vault.waitForDeployment();
-  const vaultAddress = await vault.getAddress();
+  const vaultAddress = await waitDeployed(vault, "DemoVault");
   console.log("DemoVault     ", vaultAddress);
 
   const payload = {

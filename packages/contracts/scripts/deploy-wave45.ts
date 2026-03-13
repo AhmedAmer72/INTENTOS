@@ -2,6 +2,7 @@ import { config as loadEnv } from "dotenv";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import hre from "hardhat";
+import { waitDeployed } from "./wait-deployed";
 
 loadEnv({ path: resolve(__dirname, "../../../.env") });
 
@@ -18,20 +19,17 @@ async function main() {
 
   const Meter = await hre.ethers.getContractFactory("VerificationMeter");
   const meter = await Meter.deploy(deployer.address, deployer.address, price);
-  await meter.waitForDeployment();
-  const meterAddress = await meter.getAddress();
+  const meterAddress = await waitDeployed(meter, "VerificationMeter");
   console.log("VerificationMeter", meterAddress);
 
   const Consumer = await hre.ethers.getContractFactory("CertificateConsumer");
   const consumer = await Consumer.deploy(registry);
-  await consumer.waitForDeployment();
-  const consumerAddress = await consumer.getAddress();
+  const consumerAddress = await waitDeployed(consumer, "CertificateConsumer");
   console.log("CertificateConsumer", consumerAddress);
 
   const Agentic = await hre.ethers.getContractFactory("IntentosAgenticId");
   const agentic = await Agentic.deploy();
-  await agentic.waitForDeployment();
-  const agenticAddress = await agentic.getAddress();
+  const agenticAddress = await waitDeployed(agentic, "IntentosAgenticId");
   console.log("IntentosAgenticId", agenticAddress);
 
   const dir = resolve(__dirname, "../deployments");

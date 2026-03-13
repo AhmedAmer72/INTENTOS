@@ -2,6 +2,7 @@ import { config as loadEnv } from "dotenv";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import hre from "hardhat";
+import { waitDeployed } from "./wait-deployed";
 
 loadEnv({ path: resolve(__dirname, "../../../.env") });
 
@@ -26,26 +27,22 @@ async function main() {
 
   const Executor = await hre.ethers.getContractFactory("IntentExecutor");
   const executor = await Executor.deploy(registry, delay);
-  await executor.waitForDeployment();
-  const executorAddress = await executor.getAddress();
+  const executorAddress = await waitDeployed(executor, "IntentExecutor");
   console.log("IntentExecutor", executorAddress);
 
   const Target = await hre.ethers.getContractFactory("SettlementTarget");
   const target = await Target.deploy();
-  await target.waitForDeployment();
-  const targetAddress = await target.getAddress();
+  const targetAddress = await waitDeployed(target, "SettlementTarget");
   console.log("SettlementTarget", targetAddress);
 
   const Bounty = await hre.ethers.getContractFactory("IntentBounty");
   const bounty = await Bounty.deploy(registry);
-  await bounty.waitForDeployment();
-  const bountyAddress = await bounty.getAddress();
+  const bountyAddress = await waitDeployed(bounty, "IntentBounty");
   console.log("IntentBounty", bountyAddress);
 
   const Agentic = await hre.ethers.getContractFactory("IntentosAgenticIdV2");
   const agentic = await Agentic.deploy(oracle);
-  await agentic.waitForDeployment();
-  const agenticAddress = await agentic.getAddress();
+  const agenticAddress = await waitDeployed(agentic, "IntentosAgenticIdV2");
   console.log("IntentosAgenticIdV2", agenticAddress);
 
   const dir = resolve(__dirname, "../deployments");

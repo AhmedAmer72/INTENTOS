@@ -1,0 +1,56 @@
+{
+  "name": "intentos",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Intent verification infrastructure for autonomous AI agents on 0G.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.28.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "provision": "node scripts/provision-wallets.mjs",
+    "balances": "node scripts/check-balances.mjs",
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
+    "lint": "pnpm -r --if-present lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "dev": "pnpm --parallel --filter @intentos/api --filter @intentos/web dev",
+    "dev:api": "pnpm --filter @intentos/api dev",
+    "dev:web": "pnpm --filter @intentos/web dev",
+    "start:api": "pnpm --filter @intentos/api start",
+    "build:web": "pnpm --filter @intentos/web build",
+    "contracts:compile": "pnpm --filter @intentos/contracts compile",
+    "contracts:test": "pnpm --filter @intentos/contracts test",
+    "contracts:deploy:galileo": "pnpm --filter @intentos/contracts deploy:galileo",
+    "contracts:deploy:wave45:galileo": "pnpm --filter @intentos/contracts deploy:wave45:galileo",
+    "contracts:deploy:mainnet": "pnpm --filter @intentos/contracts deploy:mainnet",
+    "db:generate": "pnpm --filter @intentos/api db:generate",
+    "db:push": "pnpm --filter @intentos/api db:push"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "esbuild",
+      "keccak",
+      "secp256k1",
+      "sharp",
+      "bufferutil",
+      "utf-8-validate",
+      "es5-ext"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "@types/node": "^22.17.0",
+    "eslint": "^9.34.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.40.0",
+    "vitest": "^3.2.4"
+  }
+}

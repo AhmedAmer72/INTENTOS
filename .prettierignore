@@ -1,0 +1,10 @@
+node_modules
+dist
+.next
+coverage
+artifacts
+cache
+pnpm-lock.yaml
+apps/api/dev.db
+packages/contracts/artifacts
+packages/contracts/cache

@@ -1,0 +1,27 @@
+{
+  "comment": "Golden vectors: hash = keccak256(utf8(JCS(object))). Solidity HashProbe.keccakUtf8(canonical) must match.",
+  "cases": [
+    {
+      "name": "empty-object",
+      "object": {},
+      "canonical": "{}",
+      "keccak256": "0xb48d38f93eaa084033fc5970bf96e559c33c4cd20ab4f91175ef33bcac47b306"
+    },
+    {
+      "name": "key-order",
+      "object": { "b": 2, "a": 1 },
+      "canonical": "{\"a\":1,\"b\":2}",
+      "keccak256": ""
+    },
+    {
+      "name": "nested",
+      "object": {
+        "version": "1.0",
+        "intentId": "11111111-1111-1111-1111-111111111111",
+        "constraints": { "hard": [{ "type": "no_leverage" }] }
+      },
+      "canonical": "",
+      "keccak256": ""
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@intentos/zerog",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "lint": "eslint src test"
+  },
+  "dependencies": {
+    "@0gfoundation/0g-storage-ts-sdk": "^1.2.11",
+    "@intentos/schema": "workspace:*",
+    "ethers": "6.13.1",
+    "openai": "^5.12.2",
+    "viem": "^2.33.3"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

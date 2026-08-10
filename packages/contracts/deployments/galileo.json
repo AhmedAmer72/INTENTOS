@@ -1,0 +1,23 @@
+{
+  "network": "galileo",
+  "chainId": 16602,
+  "deployer": "0xF011D5e43BBE01cCc7ab1f1E799e974691FD530b",
+  "oracle": "0xee066a65D5C3878254E4027D4fff76a9Ac427c74",
+  "IntentRegistry": "0xfdDe66249e140aCbF36B65a801A9de58bF8a7Fb9",
+  "DemoVault": "0x8F0F527c299bA7085AE258fdB5D32b4E52AE6Cf6",
+  "deployedAt": "2026-08-30T13:46:46.564Z",
+  "registryTx": "0x7c3091651c24d0dd92717b188d3df5682b6ebc95b1b2b266a407ccaae62fdd55",
+  "vaultTx": "0xe857dbfe0c38b47a992a7c5e6cc5f5bc1e50523ffc8c0f3e281fec4282250308",
+  "VerificationMeter": "0x160046e7d8b6497d77F0eAdD6C20eb14A158753d",
+  "CertificateConsumer": "0x13B90C0563Aa98015793aC4e0F3F4379950b1208",
+  "IntentosAgenticId": "0x4F4d5ad11616fE14dbBA1aA88A4EC800C162a4Fc",
+  "verifyPriceWei": "100000000000000",
+  "wave45At": "2026-08-30T16:49:34.578Z",
+  "meterTx": "0x5a7bf2bab850241983967639e5d9d05ab53cec63ffd82c2701d37bd3107846e1",
+  "consumerTx": "0xea70ef23258ac0ec4e854975fd4f4d2cf640bda89b1c148b6655ee4521fa8826",
+  "agenticTx": "0x54acc0ff4c0143baff165198aacf96e351dab9e05672b59be60dfaa0e07ccd90",
+  "agenticTokenId": "1",
+  "agenticEncryptedURI": "0x4402bb503bb62d0dff9a4cbaf842a1c9407f544c4e09ebfb917c2ec509ffdaea",
+  "agenticMetadataHash": "0x14f98a566b5ac9ced6fcf1663a9dcee83eb1ec4a6ea92a3e9e60b444d5f128be",
+  "agenticMintTx": "0x2e963a6cf9003fd83abd5aaea50da18556c58da1b181fa3195688687b9937fe0"
+}

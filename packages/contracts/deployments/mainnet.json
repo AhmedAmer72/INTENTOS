@@ -1,0 +1,7 @@
+{
+  "network": "mainnet",
+  "chainId": 16661,
+  "IntentRegistry": "",
+  "DemoVault": "",
+  "note": "Filled by scripts/deploy.ts after a live mainnet deploy. Wave 3 submission requires this address plus explorer verification."
+}

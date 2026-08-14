@@ -1,0 +1,29 @@
+{
+  "name": "@intentos/agent-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "lint": "eslint src test",
+    "example:a2a": "tsx examples/sdk-a2a.mts"
+  },
+  "dependencies": {
+    "@intentos/schema": "workspace:*",
+    "@intentos/zerog": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.3",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

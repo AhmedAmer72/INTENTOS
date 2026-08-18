@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Intent {
+  id           String         @id
+  intentHash   String
+  principal    String
+  envelopeJson String
+  sourceText   String         @default("")
+  status       String
+  createdAt    DateTime       @default(now())
+  verifications Verification[]
+}
+
+model Verification {
+  id           String   @id @default(uuid())
+  intentId     String
+  intent       Intent   @relation(fields: [intentId], references: [id], onDelete: Cascade)
+  actionHash   String
+  verdict      String
+  evidenceRoot String
+  resultJson   String
+  evidenceJson String
+  actionJson   String
+  registerTx   String?
+  verifyTx     String?
+  settleTx     String?
+  payer        String?
+  meterTx      String?
+  mode         String   @default("human")
+  reputationTx String?
+  batchId      String?
+  createdAt    DateTime @default(now())
+
+  @@index([intentId, actionHash])
+}
+
+model CertificateRow {
+  id          Int    @id @default(autoincrement())
+  intentId    String
+  actionHash  String @unique
+  payloadJson String
+}
+
+model LogEvent {
+  id           String  @id @default(uuid())
+  ts           Int
+  intentId     String
+  actionHash   String
+  verdict      String
+  evidenceRoot String
+  verifyTx     String?
+  batchId      String?
+}
+
+model ExecutionBatch {
+  id         String   @id @default(uuid())
+  root       String
+  fromTs     Int
+  toTs       Int
+  count      Int
+  eventsJson String
+  createdAt  DateTime @default(now())
+}

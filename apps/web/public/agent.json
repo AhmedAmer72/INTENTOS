@@ -1,0 +1,6 @@
+{
+  "name": "INTENTOS Reference Yield Agent",
+  "description": "Live 0G Compute agent. Greedy mode maximizes yield (often violating constraints). Replan mode obeys the Intent Envelope.",
+  "protocol": "INTENTOS",
+  "version": "1.0"
+}

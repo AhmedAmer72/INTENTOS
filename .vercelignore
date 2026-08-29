@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+apps/web/.env.local
+apps/api/.env
+.wallets.json
+apps/api/dev.db
+apps/api/prisma/*.db
+packages/contracts/cache
+packages/contracts/artifacts
+packages/contracts/typechain-types
+node_modules

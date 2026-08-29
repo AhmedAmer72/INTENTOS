@@ -1,0 +1,51 @@
+# Render Blueprint — API only. Web is on Vercel (see docs/deploy.md).
+# Dashboard → New → Blueprint → this repo. Secrets stay in the Render UI.
+
+services:
+  - type: web
+    name: intentos-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: corepack enable && corepack prepare pnpm@10.28.2 --activate && pnpm install --frozen-lockfile && pnpm --filter @intentos/api db:generate && pnpm --filter @intentos/api db:push
+    startCommand: pnpm --filter @intentos/api start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        value: file:./prisma/prod.db
+      - key: ZEROG_NETWORK
+        value: galileo
+      - key: ZEROG_TESTNET_RPC
+        value: https://evmrpc-testnet.0g.ai
+      - key: ZEROG_STORAGE_UPLOAD
+        value: "1"
+      - key: ZEROG_ROUTER_MODEL
+        value: qwen2.5-omni
+      - key: VERIFY_PRICE_WEI
+        value: "100000000000000"
+      - key: ZEROG_ROUTER_API_KEY
+        sync: false
+      - key: DEPLOYER_PRIVATE_KEY
+        sync: false
+      - key: VERIFIER_ORACLE_PRIVATE_KEY
+        sync: false
+      - key: INTENT_REGISTRY_ADDRESS
+        sync: false
+      - key: DEMO_VAULT_ADDRESS
+        sync: false
+      - key: VERIFICATION_METER_ADDRESS
+        sync: false
+      - key: CERTIFICATE_CONSUMER_ADDRESS
+        sync: false
+      - key: AGENTIC_ID_ADDRESS
+        sync: false
+      - key: AGENTIC_ID_TOKEN
+        sync: false
+      - key: AGENT_ID
+        sync: false
+      - key: REQUIREMENT_AGENT_ID
+        sync: false
